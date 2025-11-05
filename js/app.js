@@ -34,6 +34,11 @@ function initIcpInfo() {
 
 // 初始化
 document.addEventListener('DOMContentLoaded', function () {
+    // 显示版本信息
+    console.log(`%c🎉 JSON 格式化工具 v${CONFIG.version}`, 'color: #0fd59d; font-size: 16px; font-weight: bold;');
+    console.log(`📅 构建日期: ${CONFIG.buildDate}`);
+    console.log(`👨‍💻 开发团队: ${CONFIG.author}`);
+    
     // 初始化备案号
     initIcpInfo();
     
@@ -366,5 +371,5 @@ function debounce(func, wait) {
 }
 
 // 绑定防抖的输入处理
-const debouncedProcessJson = debounce(processJson, 300);
+const debouncedProcessJson = debounce(processJson, CONFIG.ui.debounceDelay);
 jsonInput.addEventListener('input', debouncedProcessJson);
