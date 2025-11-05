@@ -1,15 +1,11 @@
 // 全局变量
 let currentJson = null;
 let isCompressed = false;
-
-
+let showLineNumbers = false;
+let enableCollapsible = false;
 
 // DOM 元素
-const jsonInput = document.getElementById('json-input');
-const jsonOutput = document.getElementById('json-output');
-const inputStatus = document.getElementById('input-status');
-const outputStatus = document.getElementById('output-status');
-const notification = document.getElementById('notification');
+let jsonInput, jsonOutput, inputStatus, outputStatus, notification, lineNumbers, outputContainer;
 
 // 初始化备案号显示
 function initIcpInfo() {
@@ -34,6 +30,19 @@ function initIcpInfo() {
 
 // 初始化
 document.addEventListener('DOMContentLoaded', function () {
+    // 初始化 DOM 元素
+    jsonInput = document.getElementById('json-input');
+    jsonOutput = document.getElementById('json-output');
+    inputStatus = document.getElementById('input-status');
+    outputStatus = document.getElementById('output-status');
+    notification = document.getElementById('notification');
+    lineNumbers = document.getElementById('line-numbers');
+    outputContainer = document.querySelector('.output-container');
+    
+    // 初始化配置
+    showLineNumbers = CONFIG.features.showLineNumbers;
+    enableCollapsible = CONFIG.features.enableCollapsible;
+    
     // 显示版本信息
     console.log(`%c🎉 JSON 格式化工具 v${CONFIG.version}`, 'color: #0fd59d; font-size: 16px; font-weight: bold;');
     console.log(`📅 构建日期: ${CONFIG.buildDate}`);
@@ -50,13 +59,26 @@ document.addEventListener('DOMContentLoaded', function () {
         "config": {
             "theme": "green",
             "autoFormat": true,
-            "showLineNumbers": false
+            "showLineNumbers": true
         },
         "author": "JSON Tool Team"
     };
 
     jsonInput.value = JSON.stringify(sampleJson, null, 2);
     processJson();
+    
+    // 初始化行号显示
+    if (showLineNumbers) {
+        outputContainer.classList.add('show-line-numbers');
+        lineNumbers.style.display = 'block';
+    }
+    
+    // 绑定事件监听器
+    const debouncedProcessJson = debounce(processJson, CONFIG.ui.debounceDelay);
+    jsonInput.addEventListener('input', debouncedProcessJson);
+    jsonInput.addEventListener('drop', handleDrop);
+    jsonInput.addEventListener('dragover', handleDragOver);
+    jsonInput.addEventListener('dragleave', handleDragLeave);
 });
 
 // 处理 JSON 输入
@@ -97,8 +119,20 @@ function processJson() {
 
 // 显示 JSON（带语法高亮）
 function displayJson(jsonString) {
+    // 先显示普通的语法高亮
     const highlighted = highlightJson(jsonString);
     jsonOutput.innerHTML = highlighted;
+    
+    // 如果启用可折叠功能且不是压缩模式，添加可折叠功能
+    if (enableCollapsible && !isCompressed) {
+        addCollapsibleToOutput();
+    }
+    
+    // 更新行号
+    if (showLineNumbers) {
+        updateLineNumbers(jsonString);
+    }
+    
     isCompressed = false;
 }
 
@@ -170,6 +204,12 @@ function compressJson() {
         const highlighted = highlightJson(compressed);
         jsonOutput.innerHTML = highlighted;
         isCompressed = true;
+        
+        // 更新行号
+        if (showLineNumbers) {
+            updateLineNumbers(compressed);
+        }
+        
         showNotification('JSON 压缩完成');
     }
 }
@@ -370,6 +410,194 @@ function debounce(func, wait) {
     };
 }
 
-// 绑定防抖的输入处理
-const debouncedProcessJson = debounce(processJson, CONFIG.ui.debounceDelay);
-jsonInput.addEventListener('input', debouncedProcessJson);
+// 行号功能
+function updateLineNumbers(text) {
+    if (!showLineNumbers) {
+        lineNumbers.style.display = 'none';
+        outputContainer.classList.remove('show-line-numbers');
+        return;
+    }
+    
+    // 计算实际显示的行数（考虑可折叠内容）
+    let visibleLines;
+    if (enableCollapsible && !isCompressed) {
+        // 如果启用了可折叠功能，需要计算实际可见的行数
+        visibleLines = countVisibleLines();
+    } else {
+        visibleLines = text.split('\n').length;
+    }
+    
+    const lineNumbersText = Array.from({length: visibleLines}, (_, index) => index + 1).join('\n');
+    lineNumbers.textContent = lineNumbersText;
+    lineNumbers.style.display = 'block';
+    outputContainer.classList.add('show-line-numbers');
+}
+
+function countVisibleLines() {
+    // 创建一个临时元素来计算可见文本
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = jsonOutput.innerHTML;
+    
+    // 移除所有折叠的内容
+    const collapsedElements = tempDiv.querySelectorAll('.collapsible-content.collapsed');
+    collapsedElements.forEach(el => el.remove());
+    
+    // 计算剩余文本的行数
+    const visibleText = tempDiv.textContent || tempDiv.innerText;
+    const lines = visibleText.split('\n');
+    
+    return Math.max(1, lines.length);
+}
+
+function toggleLineNumbers() {
+    showLineNumbers = !showLineNumbers;
+    
+    if (currentJson) {
+        const currentText = isCompressed ? 
+            JSON.stringify(currentJson) : 
+            JSON.stringify(currentJson, null, 2);
+        updateLineNumbers(currentText);
+    }
+    
+    showNotification(showLineNumbers ? '行号已显示' : '行号已隐藏');
+}
+
+// 可折叠功能
+function addCollapsibleToOutput() {
+    // 获取当前的 HTML 内容（已经有语法高亮）
+    const htmlContent = jsonOutput.innerHTML;
+    const lines = htmlContent.split('\n');
+    let result = [];
+    let bracketStack = [];
+    let toggleCounter = 0;
+    
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        // 获取纯文本内容来判断结构
+        const textContent = line.replace(/<[^>]*>/g, '');
+        const trimmedText = textContent.trim();
+        const indent = textContent.length - textContent.trimStart().length;
+        
+        // 检查是否是对象或数组的开始
+        if (trimmedText.endsWith('{') || trimmedText.endsWith('[')) {
+            const contentId = `content-${toggleCounter}`;
+            toggleCounter++;
+            
+            // 在行的开头添加折叠按钮（保持原有的缩进和高亮）
+            const indentMatch = line.match(/^(\s*)/);
+            const leadingSpaces = indentMatch ? indentMatch[1] : '';
+            const toggleButton = `<span class="collapsible-toggle expanded" data-content="${contentId}"></span>`;
+            const restOfLine = line.substring(leadingSpaces.length);
+            
+            result.push(`${leadingSpaces}${toggleButton}${restOfLine}<span class="collapsible-content" id="${contentId}">`);
+            bracketStack.push({ indent, contentId });
+            
+        } else if ((trimmedText === '}' || trimmedText === ']') && bracketStack.length > 0) {
+            const lastBlock = bracketStack[bracketStack.length - 1];
+            
+            if (indent <= lastBlock.indent) {
+                // 结束当前折叠区域
+                result.push(`${line}</span>`);
+                bracketStack.pop();
+            } else {
+                result.push(line);
+            }
+        } else {
+            result.push(line);
+        }
+    }
+    
+    // 关闭所有未关闭的折叠区域
+    while (bracketStack.length > 0) {
+        result[result.length - 1] += '</span>';
+        bracketStack.pop();
+    }
+    
+    jsonOutput.innerHTML = result.join('\n');
+    
+    // 添加点击事件监听器
+    const toggles = jsonOutput.querySelectorAll('.collapsible-toggle');
+    toggles.forEach(toggle => {
+        toggle.addEventListener('click', function() {
+            const contentId = this.getAttribute('data-content');
+            toggleCollapse(this, contentId);
+        });
+    });
+}
+
+function toggleCollapse(toggleElement, contentId) {
+    const content = document.getElementById(contentId);
+    
+    if (!toggleElement || !content) return;
+    
+    const isCollapsed = content.classList.contains('collapsed');
+    
+    if (isCollapsed) {
+        // 展开
+        content.classList.remove('collapsed');
+        toggleElement.classList.remove('collapsed');
+        toggleElement.classList.add('expanded');
+        
+        // 移除占位符
+        const placeholder = document.querySelector(`[data-toggle-back="${contentId}"]`);
+        if (placeholder) {
+            placeholder.remove();
+        }
+    } else {
+        // 折叠
+        content.classList.add('collapsed');
+        toggleElement.classList.remove('expanded');
+        toggleElement.classList.add('collapsed');
+        
+        // 添加占位符显示折叠的内容概要
+        const placeholder = createCollapsePlaceholder(content);
+        content.insertAdjacentHTML('afterend', placeholder);
+        
+        // 为占位符添加点击事件
+        const placeholderElement = document.querySelector(`[data-toggle-back="${contentId}"]`);
+        if (placeholderElement) {
+            placeholderElement.addEventListener('click', function() {
+                toggleCollapse(toggleElement, contentId);
+            });
+        }
+    }
+    
+    // 更新行号
+    if (showLineNumbers) {
+        setTimeout(() => {
+            updateLineNumbers(''); // 传入空字符串，让函数重新计算可见行数
+        }, 0);
+    }
+}
+
+function createCollapsePlaceholder(content) {
+    const text = content.textContent.trim();
+    const lines = text.split('\n').filter(line => line.trim());
+    
+    let summary = '';
+    if (text.includes('{')) {
+        // 计算对象中的键数量
+        const keyMatches = text.match(/"[^"]*"\s*:/g);
+        const keyCount = keyMatches ? keyMatches.length : 0;
+        summary = ` { ${keyCount} ${keyCount === 1 ? 'item' : 'items'} }`;
+    } else if (text.includes('[')) {
+        // 计算数组中的元素数量
+        const commaCount = (text.match(/,/g) || []).length;
+        const itemCount = commaCount > 0 ? commaCount + 1 : (lines.length > 2 ? 1 : 0);
+        summary = ` [ ${itemCount} ${itemCount === 1 ? 'item' : 'items'} ]`;
+    }
+    
+    return `<span class="collapsible-placeholder" data-toggle-back="${content.id}">${summary}</span>`;
+}
+
+function toggleCollapsible() {
+    enableCollapsible = !enableCollapsible;
+    
+    if (currentJson && !isCompressed) {
+        const formatted = JSON.stringify(currentJson, null, 2);
+        displayJson(formatted);
+    }
+    
+    showNotification(enableCollapsible ? '折叠功能已启用' : '折叠功能已禁用');
+}
+

@@ -5,7 +5,8 @@
     box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
     height: 100%;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif, 'Microsoft YaHei';
     background: #f5f7fa;
@@ -23,7 +24,7 @@ html, body {
 .header {
     background: white;
     border-bottom: 1px solid #e1e8ed;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     z-index: 100;
 }
 
@@ -73,7 +74,9 @@ html, body {
     color: white;
     border-color: #0fd59d;
     transform: translateY(-1px);
-}.btn .icon {
+}
+
+.btn .icon {
 
     font-size: 1rem;
 }
@@ -98,13 +101,14 @@ html, body {
 }
 
 /* 面板样式 */
-.input-panel, .output-panel {
+.input-panel,
+.output-panel {
     flex: 1;
     display: flex;
     flex-direction: column;
     background: white;
     border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     overflow: hidden;
     min-height: 600px;
 }
@@ -155,7 +159,9 @@ html, body {
 .status-text {
     color: #6c757d;
     font-weight: 500;
-}/* 输
+}
+
+/* 输
 入区域 */
 .json-textarea {
     flex: 1;
@@ -185,10 +191,33 @@ html, body {
 .output-container {
     flex: 1;
     overflow: auto;
+    position: relative;
+    display: flex;
+}
+
+/* 行号样式 */
+.line-numbers {
+    background: #f8f9fa;
+    border-right: 1px solid #e9ecef;
+    color: #6c757d;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 15px;
+    line-height: 1.7;
+    padding: 2rem 0.5rem 2rem 1rem;
+    text-align: right;
+    user-select: none;
+    white-space: pre-line;
+    min-width: 50px;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.output-container.show-line-numbers .json-output {
+    padding-left: 1rem;
 }
 
 .json-output {
-    width: 100%;
+    flex: 1;
     height: 100%;
     padding: 2rem;
     margin: 0;
@@ -201,6 +230,11 @@ html, body {
     word-wrap: break-word;
     overflow-wrap: break-word;
     min-height: 500px;
+}
+
+/* 确保所有子元素都有一致的行高 */
+.json-output * {
+    line-height: inherit;
 }
 
 /* JSON 语法高亮 */
@@ -227,6 +261,55 @@ html, body {
 
 .json-punctuation {
     color: #333;
+}
+
+/* 可折叠功能样式 */
+.collapsible-toggle {
+    cursor: pointer;
+    user-select: none;
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    margin-right: 6px;
+    text-align: center;
+    font-size: 12px;
+    line-height: 14px;
+    background: #e9ecef;
+    border-radius: 3px;
+    color: #6c757d;
+    transition: all 0.2s ease;
+    vertical-align: baseline;
+}
+
+.collapsible-toggle:hover {
+    background: #0fd59d;
+    color: white;
+}
+
+.collapsible-toggle.collapsed::before {
+    content: '+';
+}
+
+.collapsible-toggle.expanded::before {
+    content: '−';
+}
+
+.collapsible-content {
+    display: inline;
+}
+
+.collapsible-content.collapsed {
+    display: none;
+}
+
+.collapsible-placeholder {
+    color: #6c757d;
+    font-style: italic;
+    cursor: pointer;
+}
+
+.collapsible-placeholder:hover {
+    color: #0fd59d;
 }
 
 /* 错误样式 */
@@ -273,7 +356,7 @@ html, body {
     color: white;
     padding: 1rem 1.5rem;
     border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     transform: translateX(400px);
     transition: transform 0.3s ease;
     z-index: 1000;
@@ -300,26 +383,28 @@ html, body {
         gap: 1rem;
         padding: 1rem;
     }
-    
+
     .toolbar {
         flex-wrap: wrap;
         justify-content: center;
     }
-    
+
     .btn .text {
         display: none;
     }
-    
+
     .editor-container {
         flex-direction: column;
         gap: 0.5rem;
     }
-    
-    .input-panel, .output-panel {
+
+    .input-panel,
+    .output-panel {
         min-height: 400px;
     }
-    
-    .json-textarea, .json-output {
+
+    .json-textarea,
+    .json-output {
         font-size: 12px;
         padding: 1rem;
     }

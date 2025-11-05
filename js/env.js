@@ -16,7 +16,8 @@ const CONFIG = {
         enableKeyboardShortcuts: true, // 启用键盘快捷键
         enableNotifications: true,  // 启用通知提示
         enableAutoFormat: true,     // 启用自动格式化
-        showLineNumbers: false      // 显示行号（预留功能）
+        showLineNumbers: true,      // 显示行号
+        enableCollapsible: true     // 启用可折叠功能
     },
     
     // UI 配置

@@ -40,6 +40,14 @@
                         <span class="icon">💾</span>
                         <span class="text">下载</span>
                     </button>
+                    <button class="btn" onclick="toggleLineNumbers()" title="切换行号">
+                        <span class="icon">🔢</span>
+                        <span class="text">行号</span>
+                    </button>
+                    <button class="btn" onclick="toggleCollapsible()" title="切换折叠">
+                        <span class="icon">📁</span>
+                        <span class="text">折叠</span>
+                    </button>
                 </div>
             </div>
         </header>
@@ -68,10 +76,6 @@
   &quot;city&quot;: &quot;北京&quot;,
   &quot;hobbies&quot;: [&quot;读书&quot;, &quot;游泳&quot;, &quot;编程&quot;]
 }"
-                        oninput="processJson()"
-                        ondrop="handleDrop(event)"
-                        ondragover="handleDragOver(event)"
-                        ondragleave="handleDragLeave(event)"
                     ></textarea>
                 </div>
 
@@ -85,6 +89,7 @@
                         </div>
                     </div>
                     <div class="output-container">
+                        <div class="line-numbers" id="line-numbers" style="display: none;"></div>
                         <pre id="json-output" class="json-output"></pre>
                     </div>
                 </div>
@@ -105,7 +110,7 @@
         <span class="notification-text"></span>
     </div>
 
-    <script src="js/app.js"></script>
     <script src="js/env.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>
