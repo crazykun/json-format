@@ -56,7 +56,7 @@ npx serve .
 
 ## 📄 许可证
 
-MIT License
+本项目基于 [MIT License](LICENSE) 开源协议发布。
 
 ---
 
