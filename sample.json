@@ -1,0 +1,53 @@
+{
+  "name": "JSON 格式化工具示例",
+  "version": "2.0.0",
+  "description": "这是一个用于测试 JSON 格式化工具的示例文件",
+  "features": [
+    "JSON 格式化和美化",
+    "JSON 压缩",
+    "JSON 验证",
+    "XML 转 JSON",
+    "语法高亮",
+    "错误提示",
+    "文件保存",
+    "剪贴板复制"
+  ],
+  "config": {
+    "theme": "modern",
+    "autoFormat": true,
+    "showLineNumbers": false,
+    "indentSize": 4
+  },
+  "users": [
+    {
+      "id": 1,
+      "name": "张三",
+      "email": "zhangsan@example.com",
+      "active": true,
+      "roles": [
+        "admin",
+        "user"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "李四",
+      "email": "lisi@example.com",
+      "active": false,
+      "roles": [
+        "user"
+      ]
+    }
+  ],
+  "metadata": {
+    "created": "2024-01-01T00:00:00Z",
+    "updated": "2024-11-05T12:00:00Z",
+    "author": "JSON Format Tool",
+    "tags": [
+      "json",
+      "formatter",
+      "tool",
+      "web"
+    ]
+  }
+}

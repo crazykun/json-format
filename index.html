@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>JSON 在线格式化工具</title>
+    <meta name="description" content="简洁高效的JSON在线格式化工具，支持JSON格式化、压缩、验证等功能">
+    <meta name="keywords" content="json格式化,json在线工具,json验证,json压缩">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 头部 -->
+        <header class="header">
+            <div class="header-content">
+                <h1 class="logo">JSON <span>格式化工具</span></h1>
+                <div class="toolbar">
+                    <button class="btn" onclick="formatJson()" title="格式化">
+                        <span class="icon">🎨</span>
+                        <span class="text">格式化</span>
+                    </button>
+                    <button class="btn" onclick="compressJson()" title="压缩">
+                        <span class="icon">📦</span>
+                        <span class="text">压缩</span>
+                    </button>
+                    <button class="btn" onclick="validateJson()" title="验证">
+                        <span class="icon">✅</span>
+                        <span class="text">验证</span>
+                    </button>
+                    <button class="btn" onclick="clearAll()" title="清空">
+                        <span class="icon">🗑️</span>
+                        <span class="text">清空</span>
+                    </button>
+                    <button class="btn" onclick="copyResult()" title="复制">
+                        <span class="icon">📋</span>
+                        <span class="text">复制</span>
+                    </button>
+                    <button class="btn" onclick="downloadJson()" title="下载">
+                        <span class="icon">💾</span>
+                        <span class="text">下载</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- 主内容区 -->
+        <main class="main">
+            <div class="editor-container">
+                <!-- 输入区域 -->
+                <div class="input-panel">
+                    <div class="panel-header">
+                        <h3>输入 JSON</h3>
+                        <div class="status" id="input-status">
+                            <span class="status-dot"></span>
+                            <span class="status-text">等待输入</span>
+                        </div>
+                    </div>
+                    <textarea 
+                        id="json-input" 
+                        class="json-textarea"
+                        placeholder="请在此输入 JSON 字符串...
+
+示例：
+{
+  &quot;name&quot;: &quot;张三&quot;,
+  &quot;age&quot;: 25,
+  &quot;city&quot;: &quot;北京&quot;,
+  &quot;hobbies&quot;: [&quot;读书&quot;, &quot;游泳&quot;, &quot;编程&quot;]
+}"
+                        oninput="processJson()"
+                        ondrop="handleDrop(event)"
+                        ondragover="handleDragOver(event)"
+                        ondragleave="handleDragLeave(event)"
+                    ></textarea>
+                </div>
+
+                <!-- 输出区域 -->
+                <div class="output-panel">
+                    <div class="panel-header">
+                        <h3>格式化结果</h3>
+                        <div class="status" id="output-status">
+                            <span class="status-dot"></span>
+                            <span class="status-text">等待处理</span>
+                        </div>
+                    </div>
+                    <div class="output-container">
+                        <pre id="json-output" class="json-output"></pre>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 页脚 -->
+        <footer class="footer">
+            <div class="footer-content">
+                <p>© 2024 JSON 格式化工具</p>
+                <p class="icp-info" id="icp-info" style="display: none;"></p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- 通知提示 -->
+    <div id="notification" class="notification">
+        <span class="notification-text"></span>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script src="js/env.js"></script>
+</body>
+</html>
