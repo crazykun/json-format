@@ -193,6 +193,7 @@ body {
     overflow: auto;
     position: relative;
     display: flex;
+    scroll-behavior: smooth;
 }
 
 /* 行号样式 */
@@ -210,6 +211,8 @@ body {
     min-width: 50px;
     flex-shrink: 0;
     overflow: hidden;
+    max-height: 100%;
+    pointer-events: none;
 }
 
 .output-container.show-line-numbers .json-output {
@@ -229,7 +232,9 @@ body {
     white-space: pre-wrap;
     word-wrap: break-word;
     overflow-wrap: break-word;
+    word-break: break-all;
     min-height: 500px;
+    max-width: 100%;
 }
 
 /* 确保所有子元素都有一致的行高 */

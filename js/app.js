@@ -418,35 +418,58 @@ function updateLineNumbers(text) {
         return;
     }
     
-    // 计算实际显示的行数（考虑可折叠内容）
-    let visibleLines;
+    // 计算实际的逻辑行数（不包括自动换行）
+    let logicalLines;
     if (enableCollapsible && !isCompressed) {
-        // 如果启用了可折叠功能，需要计算实际可见的行数
-        visibleLines = countVisibleLines();
+        // 如果启用了可折叠功能，需要计算实际可见的逻辑行数
+        logicalLines = countLogicalLines();
     } else {
-        visibleLines = text.split('\n').length;
+        // 直接计算原始文本的行数
+        logicalLines = text.split('\n').length;
     }
     
-    const lineNumbersText = Array.from({length: visibleLines}, (_, index) => index + 1).join('\n');
+    const lineNumbersText = Array.from({length: logicalLines}, (_, index) => index + 1).join('\n');
     lineNumbers.textContent = lineNumbersText;
     lineNumbers.style.display = 'block';
     outputContainer.classList.add('show-line-numbers');
+    
+    // 同步滚动
+    syncLineNumbersScroll();
 }
 
-function countVisibleLines() {
-    // 创建一个临时元素来计算可见文本
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = jsonOutput.innerHTML;
+function countLogicalLines() {
+    // 简化逻辑：直接使用原始 JSON 的行数
+    let originalText;
+    if (currentJson) {
+        originalText = isCompressed ? 
+            JSON.stringify(currentJson) : 
+            JSON.stringify(currentJson, null, 2);
+    } else {
+        // 如果没有有效 JSON，从输出区域获取纯文本
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = jsonOutput.innerHTML;
+        // 移除所有 HTML 标签，只保留文本内容
+        originalText = tempDiv.textContent || tempDiv.innerText || '';
+    }
     
-    // 移除所有折叠的内容
-    const collapsedElements = tempDiv.querySelectorAll('.collapsible-content.collapsed');
-    collapsedElements.forEach(el => el.remove());
-    
-    // 计算剩余文本的行数
-    const visibleText = tempDiv.textContent || tempDiv.innerText;
-    const lines = visibleText.split('\n');
-    
+    const lines = originalText.split('\n');
     return Math.max(1, lines.length);
+}
+
+function syncLineNumbersScroll() {
+    // 同步行号区域和输出区域的滚动
+    if (showLineNumbers && outputContainer && lineNumbers) {
+        // 移除之前的监听器
+        outputContainer.removeEventListener('scroll', handleScroll);
+        // 添加新的监听器
+        outputContainer.addEventListener('scroll', handleScroll);
+    }
+}
+
+function handleScroll() {
+    if (lineNumbers && outputContainer) {
+        lineNumbers.scrollTop = outputContainer.scrollTop;
+    }
 }
 
 function toggleLineNumbers() {
