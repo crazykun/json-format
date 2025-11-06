@@ -121,7 +121,14 @@ function processJson() {
 function displayJson(jsonString) {
     // 先显示普通的语法高亮
     const highlighted = highlightJson(jsonString);
-    jsonOutput.innerHTML = highlighted;
+    
+    // 如果显示行号，为每行添加行标记
+    if (showLineNumbers) {
+        const wrappedContent = wrapLinesForLineNumbers(highlighted);
+        jsonOutput.innerHTML = wrappedContent;
+    } else {
+        jsonOutput.innerHTML = highlighted;
+    }
     
     // 如果启用可折叠功能且不是压缩模式，添加可折叠功能
     if (enableCollapsible && !isCompressed) {
@@ -134,6 +141,19 @@ function displayJson(jsonString) {
     }
     
     isCompressed = false;
+}
+
+function wrapLinesForLineNumbers(htmlContent) {
+    // 将每个逻辑行包装在一个 div 中，这样可以更好地控制行号对应
+    const lines = htmlContent.split('\n');
+    let wrappedLines = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+        const lineNumber = i + 1;
+        wrappedLines.push(`<div class="json-line" data-line="${lineNumber}">${lines[i]}</div>`);
+    }
+    
+    return wrappedLines.join('');
 }
 
 // JSON 语法高亮
@@ -418,23 +438,29 @@ function updateLineNumbers(text) {
         return;
     }
     
-    // 计算实际的逻辑行数（不包括自动换行）
-    let logicalLines;
-    if (enableCollapsible && !isCompressed) {
-        // 如果启用了可折叠功能，需要计算实际可见的逻辑行数
-        logicalLines = countLogicalLines();
-    } else {
-        // 直接计算原始文本的行数
-        logicalLines = text.split('\n').length;
-    }
+    // 使用新的行号生成方法
+    generateSmartLineNumbers();
     
-    const lineNumbersText = Array.from({length: logicalLines}, (_, index) => index + 1).join('\n');
-    lineNumbers.textContent = lineNumbersText;
     lineNumbers.style.display = 'block';
     outputContainer.classList.add('show-line-numbers');
     
     // 同步滚动
     syncLineNumbersScroll();
+}
+
+function generateSmartLineNumbers() {
+    // 获取当前可见的逻辑行
+    const visibleLines = document.querySelectorAll('.json-line');
+    
+    // 创建行号 HTML，只为可见的逻辑行显示行号
+    let lineNumbersHTML = '';
+    
+    visibleLines.forEach((line, index) => {
+        const lineNumber = parseInt(line.getAttribute('data-line')) || (index + 1);
+        lineNumbersHTML += `<div class="line-number-item" data-line="${lineNumber}">${lineNumber}</div>`;
+    });
+    
+    lineNumbers.innerHTML = lineNumbersHTML;
 }
 
 function countLogicalLines() {
@@ -479,7 +505,8 @@ function toggleLineNumbers() {
         const currentText = isCompressed ? 
             JSON.stringify(currentJson) : 
             JSON.stringify(currentJson, null, 2);
-        updateLineNumbers(currentText);
+        // 重新显示 JSON 以应用行号包装
+        displayJson(currentText);
     }
     
     showNotification(showLineNumbers ? '行号已显示' : '行号已隐藏');

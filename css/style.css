@@ -207,12 +207,30 @@ body {
     padding: 2rem 0.5rem 2rem 1rem;
     text-align: right;
     user-select: none;
-    white-space: pre-line;
     min-width: 50px;
     flex-shrink: 0;
     overflow: hidden;
     max-height: 100%;
     pointer-events: none;
+}
+
+.line-number-item {
+    height: auto;
+    min-height: 1.7em; /* 与 line-height 保持一致 */
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    white-space: nowrap;
+    padding: 0;
+    margin: 0;
+}
+
+.json-line {
+    min-height: 1.7em;
+    line-height: 1.7;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-all;
 }
 
 .output-container.show-line-numbers .json-output {
