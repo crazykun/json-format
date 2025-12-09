@@ -196,51 +196,88 @@ body {
     scroll-behavior: smooth;
 }
 
-/* 行号样式 */
-.line-numbers {
-    background: #f8f9fa;
-    border-right: 1px solid #e9ecef;
-    color: #6c757d;
+/* 行号样式现在使用表格结构实现 */
+
+/* JSON 表格样式 */
+.json-table {
+    width: 100%;
+    border-collapse: collapse;
     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
     font-size: 15px;
     line-height: 1.7;
-    padding: 2rem 0.5rem 2rem 1rem;
+    table-layout: fixed;
+}
+
+.json-table tbody {
+    display: table-row-group;
+}
+
+.json-table-row {
+    vertical-align: top;
+    display: table-row;
+}
+
+.json-line-number {
+    background: #f8f9fa;
+    border-right: 1px solid #e9ecef;
+    color: #6c757d;
+    padding: 0 8px 0 12px;
     text-align: right;
     user-select: none;
-    min-width: 50px;
-    flex-shrink: 0;
-    overflow: hidden;
-    max-height: 100%;
-    pointer-events: none;
-}
-
-.line-number-item {
-    height: auto;
-    min-height: 1.7em; /* 与 line-height 保持一致 */
-    display: flex;
-    align-items: flex-start;
-    justify-content: flex-end;
     white-space: nowrap;
-    padding: 0;
-    margin: 0;
-}
-
-.json-line {
-    min-height: 1.7em;
+    width: 50px;
+    vertical-align: top;
     line-height: 1.7;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    word-break: break-all;
+    font-size: 13px;
+    display: table-cell;
 }
 
+.json-line-content {
+    padding: 0 12px 0 8px;
+    white-space: pre-wrap;
+    vertical-align: top;
+    width: auto;
+    display: table-cell;
+    word-break: break-word;
+    overflow-wrap: break-word;
+}
+
+/* 当不显示行号时的样式 */
+.output-container:not(.show-line-numbers) .json-table {
+    display: block;
+}
+
+.output-container:not(.show-line-numbers) .json-table tbody {
+    display: block;
+}
+
+.output-container:not(.show-line-numbers) .json-table-row {
+    display: block;
+}
+
+.output-container:not(.show-line-numbers) .json-line-number {
+    display: none;
+}
+
+.output-container:not(.show-line-numbers) .json-line-content {
+    display: block;
+    padding: 0;
+}
+
+/* 不显示行号时的内容包装器样式 */
+.json-content-wrapper {
+    padding: 2rem;
+}
+
+/* 显示行号时的样式调整 */
 .output-container.show-line-numbers .json-output {
-    padding-left: 1rem;
+    padding: 1rem 0 !important;
 }
 
 .json-output {
     flex: 1;
     height: 100%;
-    padding: 2rem;
+    padding: 0;
     margin: 0;
     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
     font-size: 15px;
@@ -286,22 +323,24 @@ body {
     color: #333;
 }
 
-/* 可折叠功能样式 */
+/* 可折叠功能样式 - 通用样式 */
 .collapsible-toggle {
     cursor: pointer;
     user-select: none;
     display: inline-block;
     width: 14px;
     height: 14px;
-    margin-right: 6px;
+    margin-right: 4px;
     text-align: center;
-    font-size: 12px;
+    font-size: 10px;
     line-height: 14px;
     background: #e9ecef;
     border-radius: 3px;
     color: #6c757d;
     transition: all 0.2s ease;
-    vertical-align: baseline;
+    vertical-align: top;
+    position: relative;
+    top: 2px;
 }
 
 .collapsible-toggle:hover {
@@ -317,22 +356,54 @@ body {
     content: '−';
 }
 
-.collapsible-content {
-    display: inline;
+/* 无行号模式下的折叠样式 */
+.json-content-wrapper .collapsible-toggle {
+    margin-left: -18px;
 }
 
-.collapsible-content.collapsed {
+.json-content-wrapper .collapsible-content {
+    display: inline;
+    white-space: pre;
+}
+
+.json-content-wrapper .collapsible-content.collapsed {
     display: none;
 }
 
-.collapsible-placeholder {
+.json-content-wrapper .collapsible-placeholder {
+    color: #6c757d;
+    font-style: italic;
+    cursor: pointer;
+    display: inline-block;
+}
+
+.json-content-wrapper .collapsible-placeholder:hover {
+    color: #0fd59d;
+}
+
+/* 表格模式下的折叠样式 */
+.json-line-content .collapsible-toggle {
+    margin-left: 0;
+    margin-right: 6px;
+}
+
+.json-table .collapsible-placeholder {
     color: #6c757d;
     font-style: italic;
     cursor: pointer;
 }
 
-.collapsible-placeholder:hover {
+.json-table .collapsible-placeholder:hover {
     color: #0fd59d;
+}
+
+/* 表格占位符行样式 */
+.json-table tr[data-toggle-back] {
+    background-color: #f8f9fa;
+}
+
+.json-table tr[data-toggle-back]:hover {
+    background-color: #e9ecef;
 }
 
 /* 错误样式 */
