@@ -168,7 +168,7 @@ body {
     width: 100%;
     border: none;
     outline: none;
-    padding: 2rem;
+    padding: 1rem 1.5em;
     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
     font-size: 15px;
     line-height: 1.7;
@@ -266,7 +266,7 @@ body {
 
 /* 不显示行号时的内容包装器样式 */
 .json-content-wrapper {
-    padding: 2rem;
+    padding: 1rem 1.5rem;
 }
 
 /* 显示行号时的样式调整 */
