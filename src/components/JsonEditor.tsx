@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import Editor, { OnMount } from '@monaco-editor/react';
 import { useJsonStore } from '../store/useJsonStore';
 import { readFileAsText } from '../utils/fileUtils';
@@ -17,6 +17,11 @@ export const JsonEditor = () => {
   const inputEditorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const outputEditorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const formatTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  // 左侧面板宽度百分比 (0-100)
+  const [leftWidth, setLeftWidth] = useState(50);
+  const [isDragging, setIsDragging] = useState(false);
 
   const handleInputMount: OnMount = (editor) => {
     inputEditorRef.current = editor;
@@ -80,9 +85,57 @@ export const JsonEditor = () => {
     e.stopPropagation();
   };
 
+  // 处理分隔条拖拽
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDragging || !containerRef.current) return;
+
+    const container = containerRef.current;
+    const rect = container.getBoundingClientRect();
+    const newLeftWidth = ((e.clientX - rect.left) / rect.width) * 100;
+    
+    // 限制在 20% 到 80% 之间
+    const clampedWidth = Math.max(20, Math.min(80, newLeftWidth));
+    setLeftWidth(clampedWidth);
+  }, [isDragging]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isDragging, handleMouseMove, handleMouseUp]);
+
   return (
-    <main className="flex-1 overflow-hidden flex flex-col md:flex-row gap-2 sm:gap-3 p-2 sm:p-3">
-      <div className="flex-1 flex flex-col bg-white rounded border border-gray-200 overflow-hidden min-h-[250px] sm:min-h-[300px] md:min-h-0">
+    <main className="flex-1 overflow-hidden flex flex-col md:flex-row p-2 sm:p-3">
+      <div 
+        ref={containerRef}
+        className="flex-1 flex flex-col md:flex-row overflow-hidden relative"
+      >
+        <div 
+          className="flex flex-col bg-white rounded border border-gray-200 overflow-hidden min-h-[250px] sm:min-h-[300px] md:min-h-0"
+          style={{ 
+            width: window.innerWidth >= 768 ? `${leftWidth}%` : '100%',
+            marginBottom: window.innerWidth < 768 ? '0.75rem' : '0'
+          }}
+        >
         <div className="flex items-center justify-between px-3 py-1.5 bg-gray-50 border-b border-gray-200">
           <span className="text-xs font-medium text-gray-600">输入</span>
           {error && (
@@ -118,9 +171,22 @@ export const JsonEditor = () => {
             }}
           />
         </div>
-      </div>
+        </div>
 
-      <div className="flex-1 flex flex-col bg-white rounded border border-gray-200 overflow-hidden min-h-[250px] sm:min-h-[300px] md:min-h-0">
+        {/* 分隔条 - 只在桌面端显示 */}
+        <div 
+          className="hidden md:flex items-center justify-center w-2 cursor-col-resize hover:bg-gray-100 transition-colors group"
+          onMouseDown={handleMouseDown}
+        >
+          <div className="w-1 h-8 bg-gray-300 rounded-full group-hover:bg-gray-400 transition-colors"></div>
+        </div>
+
+        <div 
+          className="flex flex-col bg-white rounded border border-gray-200 overflow-hidden min-h-[250px] sm:min-h-[300px] md:min-h-0"
+          style={{ 
+            width: window.innerWidth >= 768 ? `${100 - leftWidth}%` : '100%'
+          }}
+        >
         <div className="flex items-center justify-between px-3 py-1.5 bg-gray-50 border-b border-gray-200">
           <span className="text-xs font-medium text-gray-600">输出</span>
           {outputJson && (
@@ -150,6 +216,7 @@ export const JsonEditor = () => {
               },
             }}
           />
+        </div>
         </div>
       </div>
     </main>
