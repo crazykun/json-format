@@ -7,23 +7,12 @@ import { useJsonStore } from './store/useJsonStore';
 import { config } from './config';
 
 function App() {
-  const { setInputJson, formatJson } = useJsonStore();
+  const { formatJson } = useJsonStore();
 
   useEffect(() => {
     // Log version info
     console.log(`JSON 格式化工具 v${config.version}`);
     console.log(`构建日期: ${config.buildDate}`);
-
-    // Load sample JSON on mount
-    fetch('/sample.json')
-      .then((res) => res.text())
-      .then((data) => {
-        setInputJson(data);
-        formatJson();
-      })
-      .catch((error) => {
-        console.error('Failed to load sample JSON:', error);
-      });
 
     // Keyboard shortcuts
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -40,7 +29,7 @@ function App() {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [setInputJson, formatJson]);
+  }, [formatJson]);
 
   return (
     <div className="h-full flex flex-col">

@@ -9,6 +9,8 @@ export const Header = () => {
     clearAll,
     outputJson,
     addNotification,
+    enableNestedParse,
+    toggleNestedParse,
   } = useJsonStore();
 
   const handleCopy = async () => {
@@ -85,6 +87,12 @@ export const Header = () => {
               onClick={handleDownload}
               variant="secondary"
             />
+            <ToggleButton
+              icon="🔗"
+              text="嵌套解析"
+              active={enableNestedParse}
+              onClick={toggleNestedParse}
+            />
           </div>
         </div>
       </div>
@@ -110,6 +118,31 @@ const ToolButton = ({ icon, text, onClick, variant = 'secondary' }: ToolButtonPr
       onClick={onClick}
       className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded text-sm font-medium
                  transition-colors duration-150 ${variants[variant]}`}
+      title={text}
+    >
+      <span className="text-base leading-none">{icon}</span>
+      <span className="hidden sm:inline">{text}</span>
+    </button>
+  );
+};
+
+interface ToggleButtonProps {
+  icon: string;
+  text: string;
+  active: boolean;
+  onClick: () => void;
+}
+
+const ToggleButton = ({ icon, text, active, onClick }: ToggleButtonProps) => {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded text-sm font-medium
+                 transition-colors duration-150 ${
+                   active
+                     ? 'bg-green-600 hover:bg-green-700 text-white'
+                     : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                 }`}
       title={text}
     >
       <span className="text-base leading-none">{icon}</span>

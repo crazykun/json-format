@@ -114,6 +114,7 @@ export const JsonEditor = () => {
                 verticalScrollbarSize: 8,
                 horizontalScrollbarSize: 8,
               },
+              placeholder: '在此输入或粘贴 JSON 数据...\n支持拖拽 .json 文件',
             }}
           />
         </div>
