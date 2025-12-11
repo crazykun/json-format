@@ -19,12 +19,8 @@
 - ⚡ **自动格式化** - 输入后 500ms 自动格式化，无需手动点击
 - 🌙 **深色模式** - 支持浅色/深色主题切换，护眼舒适
 - 📱 **响应式设计** - 完美适配桌面、平板和移动设备
-- 🎯 **简约绿色风格** - 清爽的界面设计，最大化编辑器空间
 - 🚀 **实时处理** - JSON 格式化、压缩、验证
 - 🔗 **嵌套解析** - 智能解析嵌套的 JSON 字符串
-- 📂 **拖拽上传** - 支持拖拽 JSON 文件直接加载
-- 💾 **便捷导出** - 一键复制或下载格式化结果
-- 🔔 **智能通知** - 操作结果实时反馈，不遮挡界面
 - 💾 **智能缓存** - 自动保存输入内容，刷新页面不丢失
 
 ## 🚀 快速开始
@@ -37,7 +33,7 @@
 
 ```bash
 # 克隆项目
-git clone <repository-url>
+git clone https://github.com/crazykun/json-format.git
 cd json-format
 
 # 安装依赖
@@ -107,12 +103,6 @@ npm run preview
 - **Tailwind CSS** - 实用优先的 CSS 框架（支持深色模式）
 - **file-saver** - 文件下载工具
 - **clsx** - 条件类名工具
-
-### 开发工具
-
-- **ESLint** - 代码质量检查
-- **PostCSS** - CSS 处理工具
-- **Autoprefixer** - 自动添加浏览器前缀
 
 ## 📁 项目结构
 
@@ -195,58 +185,6 @@ export default {
 ```
 
 主题状态保存在 localStorage 中，页面刷新时会自动恢复用户的主题偏好。
-
-## 📱 响应式设计
-
-### 桌面端（≥768px）
-
-- 编辑器左右分屏
-- 完整显示按钮文字
-- 标准间距
-
-### 平板端（640-767px）
-
-- 编辑器上下堆叠
-- 显示按钮文字
-- 适中间距
-
-### 移动端（<640px）
-
-- 编辑器上下堆叠
-- 只显示按钮图标
-- 紧凑间距
-
-## 🔧 开发指南
-
-### 添加新功能
-
-1. 在 `src/store/useJsonStore.ts` 中添加状态和方法
-2. 在相应组件中使用 `useJsonStore` hook
-3. 更新 TypeScript 类型定义
-
-### 样式定制
-
-使用 Tailwind CSS 实用类进行样式定制：
-
-```jsx
-<div className="bg-green-600 hover:bg-green-700 text-white">
-  按钮
-</div>
-```
-
-或在 `tailwind.config.js` 中扩展主题：
-
-```javascript
-module.exports = {
-  theme: {
-    extend: {
-      colors: {
-        primary: '#your-color',
-      },
-    },
-  },
-};
-```
 
 ## 🚀 部署
 

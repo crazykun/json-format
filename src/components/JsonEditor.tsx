@@ -45,7 +45,7 @@ export const JsonEditor = () => {
     lastInputRef.current = inputJson;
 
     // 初始加载时立即格式化，后续变化延迟格式化
-    const delay = hasFormattedInitialRef.current ? 500 : 100;
+    const delay = hasFormattedInitialRef.current ? 250 : 100;
 
     // 清除之前的定时器
     if (formatTimerRef.current) {
