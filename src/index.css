@@ -10,6 +10,8 @@
   html,
   body {
     @apply h-full font-sans bg-white text-gray-900;
+    /* 平滑的主题切换过渡 */
+    transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
   }
 
   #root {
@@ -29,5 +31,25 @@
 
   .custom-scrollbar::-webkit-scrollbar-thumb {
     @apply bg-green-400 rounded hover:bg-green-500;
+  }
+}
+
+@layer base {
+  /* 深色模式样式 */
+  html.dark {
+    @apply bg-gray-900 text-gray-100;
+  }
+  
+  html.dark body {
+    @apply bg-gray-900 text-gray-100;
+  }
+  
+  /* 确保深色模式下滚动条样式 */
+  html.dark .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-gray-800;
+  }
+  
+  html.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-green-600 hover:bg-green-500;
   }
 }

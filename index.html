@@ -6,6 +6,53 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>JSON 格式化工具 - 在线 JSON 格式化、验证和压缩</title>
     <meta name="description" content="专业的在线 JSON 格式化工具，支持 JSON 美化、压缩、验证、语法高亮等功能" />
+    
+    <!-- 主题预加载脚本，避免白屏闪动 -->
+    <script>
+      (function() {
+        try {
+          const savedTheme = localStorage.getItem('json-formatter-theme');
+          if (savedTheme === 'dark') {
+            document.documentElement.classList.add('dark');
+            // 立即应用深色主题样式，避免闪动
+            document.documentElement.style.setProperty('--tw-bg-opacity', '1');
+            document.documentElement.style.backgroundColor = 'rgb(17 24 39)'; // gray-900
+            document.documentElement.style.color = 'rgb(243 244 246)'; // gray-100
+          } else {
+            // 确保浅色主题的默认样式
+            document.documentElement.style.backgroundColor = 'rgb(255 255 255)'; // white
+            document.documentElement.style.color = 'rgb(17 24 39)'; // gray-900
+          }
+          // 禁用初始过渡动画，避免闪动
+          document.documentElement.style.setProperty('--initial-transition', 'none');
+        } catch (e) {
+          // 忽略localStorage错误，使用默认浅色主题
+          document.documentElement.style.backgroundColor = 'rgb(255 255 255)';
+          document.documentElement.style.color = 'rgb(17 24 39)';
+        }
+      })();
+    </script>
+    
+    <!-- 初始样式，防止闪动 -->
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        transition: var(--initial-transition, background-color 0.2s, color 0.2s);
+      }
+      
+      #root {
+        height: 100%;
+        min-height: 100vh;
+      }
+      
+      /* 深色主题下的初始样式 */
+      html.dark {
+        background-color: rgb(17 24 39) !important;
+        color: rgb(243 244 246) !important;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

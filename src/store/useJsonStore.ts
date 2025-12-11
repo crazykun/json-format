@@ -1,9 +1,11 @@
 import { create } from 'zustand';
 import { JsonState, Notification, NotificationType } from '../types';
+import { storage } from '../utils/storage';
 
 interface JsonStore extends JsonState {
   notifications: Notification[];
   enableNestedParse: boolean;
+  theme: 'light' | 'dark';
 
   // Actions
   setInputJson: (json: string) => void;
@@ -12,6 +14,7 @@ interface JsonStore extends JsonState {
   setIsValid: (isValid: boolean) => void;
   setIsCompressed: (isCompressed: boolean) => void;
   toggleNestedParse: () => void;
+  toggleTheme: () => void;
 
   // JSON Operations
   parseNestedJson: (obj: any) => any;
@@ -26,17 +29,21 @@ interface JsonStore extends JsonState {
 }
 
 export const useJsonStore = create<JsonStore>((set, get) => ({
-  // Initial state
-  inputJson: '',
+  // Initial state - 从缓存中恢复
+  inputJson: storage.getInputJson(),
   outputJson: '',
   isValid: false,
   isCompressed: false,
   error: null,
   notifications: [],
-  enableNestedParse: false,
+  enableNestedParse: storage.getNestedParse(),
+  theme: storage.getTheme(),
 
   // Setters
-  setInputJson: (json) => set({ inputJson: json }),
+  setInputJson: (json) => {
+    set({ inputJson: json });
+    storage.setInputJson(json);
+  },
   setOutputJson: (json) => set({ outputJson: json }),
   setError: (error) => set({ error }),
   setIsValid: (isValid) => set({ isValid }),
@@ -44,6 +51,7 @@ export const useJsonStore = create<JsonStore>((set, get) => ({
   toggleNestedParse: () => {
     const newValue = !get().enableNestedParse;
     set({ enableNestedParse: newValue });
+    storage.setNestedParse(newValue);
     get().addNotification(
       'success',
       newValue ? '已启用嵌套解析' : '已禁用嵌套解析'
@@ -54,6 +62,14 @@ export const useJsonStore = create<JsonStore>((set, get) => ({
         get().formatJson();
       }, 100);
     }
+  },
+
+  toggleTheme: () => {
+    const currentTheme = get().theme;
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    set({ theme: newTheme });
+    storage.setTheme(newTheme);
+    get().addNotification('success', `已切换到${newTheme === 'light' ? '浅色' : '深色'}主题`);
   },
 
   // 递归解析嵌套的 JSON 字符串
@@ -158,6 +174,7 @@ export const useJsonStore = create<JsonStore>((set, get) => ({
       isCompressed: false,
       error: null,
     });
+    storage.setInputJson('');
     get().addNotification('success', '已清空所有内容');
   },
 

@@ -7,12 +7,24 @@ import { useJsonStore } from './store/useJsonStore';
 import { config } from './config';
 
 function App() {
-  const { formatJson } = useJsonStore();
+  const { formatJson, theme, inputJson } = useJsonStore();
 
   useEffect(() => {
     // Log version info
     console.log(`JSON 格式化工具 v${config.version}`);
     console.log(`构建日期: ${config.buildDate}`);
+
+    // 如果有缓存的输入内容，自动格式化
+    if (inputJson) {
+      setTimeout(() => {
+        try {
+          JSON.parse(inputJson);
+          formatJson();
+        } catch {
+          // 忽略格式错误
+        }
+      }, 500);
+    }
 
     // Keyboard shortcuts
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -29,10 +41,24 @@ function App() {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [formatJson]);
+  }, [formatJson, inputJson]);
+
+  // 同步主题到HTML类
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    
+    // 组件挂载后重新启用过渡动画
+    setTimeout(() => {
+      document.documentElement.style.removeProperty('--initial-transition');
+    }, 100);
+  }, [theme]);
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col transition-colors duration-200 bg-white dark:bg-gray-900">
       <Header />
       <JsonEditor />
       <Footer />

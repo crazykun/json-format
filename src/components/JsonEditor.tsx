@@ -12,6 +12,7 @@ export const JsonEditor = () => {
     formatJson,
     error,
     addNotification,
+    theme,
   } = useJsonStore();
 
   const inputEditorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
@@ -130,16 +131,16 @@ export const JsonEditor = () => {
         className="flex-1 flex flex-col md:flex-row overflow-hidden relative"
       >
         <div 
-          className="flex flex-col bg-white rounded border border-gray-200 overflow-hidden min-h-[250px] sm:min-h-[300px] md:min-h-0"
+          className="flex flex-col bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 overflow-hidden min-h-[250px] sm:min-h-[300px] md:min-h-0 transition-colors duration-200"
           style={{ 
             width: window.innerWidth >= 768 ? `${leftWidth}%` : '100%',
             marginBottom: window.innerWidth < 768 ? '0.75rem' : '0'
           }}
         >
-        <div className="flex items-center justify-between px-3 py-1.5 bg-gray-50 border-b border-gray-200">
-          <span className="text-xs font-medium text-gray-600">输入</span>
+        <div className="flex items-center justify-between px-3 py-1.5 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 transition-colors duration-200">
+          <span className="text-xs font-medium text-gray-600 dark:text-gray-300">输入</span>
           {error && (
-            <span className="text-xs text-red-600">{error}</span>
+            <span className="text-xs text-red-600 dark:text-red-400">{error}</span>
           )}
         </div>
         <div
@@ -153,7 +154,7 @@ export const JsonEditor = () => {
             value={inputJson}
             onChange={(value) => setInputJson(value || '')}
             onMount={handleInputMount}
-            theme="vs"
+            theme={theme === 'light' ? 'vs' : 'vs-dark'}
             options={{
               minimap: { enabled: false },
               fontSize: 14,
@@ -175,22 +176,22 @@ export const JsonEditor = () => {
 
         {/* 分隔条 - 只在桌面端显示 */}
         <div 
-          className="hidden md:flex items-center justify-center w-2 cursor-col-resize hover:bg-gray-100 transition-colors group"
+          className="hidden md:flex items-center justify-center w-2 cursor-col-resize hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group"
           onMouseDown={handleMouseDown}
         >
-          <div className="w-1 h-8 bg-gray-300 rounded-full group-hover:bg-gray-400 transition-colors"></div>
+          <div className="w-1 h-8 bg-gray-300 dark:bg-gray-600 rounded-full group-hover:bg-gray-400 dark:group-hover:bg-gray-500 transition-colors"></div>
         </div>
 
         <div 
-          className="flex flex-col bg-white rounded border border-gray-200 overflow-hidden min-h-[250px] sm:min-h-[300px] md:min-h-0"
+          className="flex flex-col bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 overflow-hidden min-h-[250px] sm:min-h-[300px] md:min-h-0 transition-colors duration-200"
           style={{ 
             width: window.innerWidth >= 768 ? `${100 - leftWidth}%` : '100%'
           }}
         >
-        <div className="flex items-center justify-between px-3 py-1.5 bg-gray-50 border-b border-gray-200">
-          <span className="text-xs font-medium text-gray-600">输出</span>
+        <div className="flex items-center justify-between px-3 py-1.5 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 transition-colors duration-200">
+          <span className="text-xs font-medium text-gray-600 dark:text-gray-300">输出</span>
           {outputJson && (
-            <span className="text-xs text-green-600">✓ 格式化完成</span>
+            <span className="text-xs text-green-600 dark:text-green-400">✓ 格式化完成</span>
           )}
         </div>
         <div className="flex-1 overflow-hidden">
@@ -199,7 +200,7 @@ export const JsonEditor = () => {
             defaultLanguage="json"
             value={outputJson}
             onMount={handleOutputMount}
-            theme="vs"
+            theme={theme === 'light' ? 'vs' : 'vs-dark'}
             options={{
               readOnly: true,
               minimap: { enabled: false },
