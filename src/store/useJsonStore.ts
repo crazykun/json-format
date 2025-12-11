@@ -2,6 +2,13 @@ import { create } from 'zustand';
 import { JsonState, Notification, NotificationType } from '../types';
 import { storage } from '../utils/storage';
 
+// 定义 JSON 数据类型的联合类型
+type JsonValue = string | number | boolean | null | JsonObject | JsonArray;
+interface JsonObject {
+  [key: string]: JsonValue;
+}
+type JsonArray = JsonValue[];
+
 interface JsonStore extends JsonState {
   notifications: Notification[];
   enableNestedParse: boolean;
@@ -17,7 +24,7 @@ interface JsonStore extends JsonState {
   toggleTheme: () => void;
 
   // JSON Operations
-  parseNestedJson: (obj: any) => any;
+  parseNestedJson: (obj: JsonValue) => JsonValue;
   formatJson: () => void;
   compressJson: () => void;
   validateJson: () => boolean;
@@ -73,7 +80,7 @@ export const useJsonStore = create<JsonStore>((set, get) => ({
   },
 
   // 递归解析嵌套的 JSON 字符串
-  parseNestedJson: (obj: any): any => {
+  parseNestedJson: (obj: JsonValue): JsonValue => {
     if (typeof obj === 'string') {
       try {
         // 尝试解析字符串为 JSON
@@ -87,7 +94,7 @@ export const useJsonStore = create<JsonStore>((set, get) => ({
     } else if (Array.isArray(obj)) {
       return obj.map(item => get().parseNestedJson(item));
     } else if (obj !== null && typeof obj === 'object') {
-      const result: any = {};
+      const result: JsonObject = {};
       for (const key in obj) {
         result[key] = get().parseNestedJson(obj[key]);
       }
