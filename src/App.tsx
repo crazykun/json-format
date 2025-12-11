@@ -7,7 +7,7 @@ import { useJsonStore } from './store/useJsonStore';
 import { config } from './config';
 
 function App() {
-  const { formatJson, theme, inputJson } = useJsonStore();
+  const { formatJson, theme } = useJsonStore();
 
   useEffect(() => {
     // Log version info

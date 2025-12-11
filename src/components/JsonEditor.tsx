@@ -36,29 +36,16 @@ export const JsonEditor = () => {
 
   // 监听输入变化，自动格式化
   useEffect(() => {
-    console.log('JsonEditor useEffect triggered:', {
-      inputJson: inputJson ? inputJson.substring(0, 50) + '...' : 'empty',
-      hasFormattedInitial: hasFormattedInitialRef.current,
-      lastInput: lastInputRef.current ? lastInputRef.current.substring(0, 50) + '...' : 'empty'
-    });
-
     // 如果输入为空，跳过
-    if (!inputJson) {
-      console.log('Skipping: inputJson is empty');
-      return;
-    }
+    if (!inputJson) return;
 
     // 如果已经格式化过初始内容且内容与上次相同，跳过
-    if (hasFormattedInitialRef.current && inputJson === lastInputRef.current) {
-      console.log('Skipping: already formatted initial and same as last input');
-      return;
-    }
+    if (hasFormattedInitialRef.current && inputJson === lastInputRef.current) return;
 
     lastInputRef.current = inputJson;
 
     // 初始加载时立即格式化，后续变化延迟格式化
     const delay = hasFormattedInitialRef.current ? 500 : 100;
-    console.log('Will format with delay:', delay, 'ms');
 
     // 清除之前的定时器
     if (formatTimerRef.current) {
@@ -67,7 +54,6 @@ export const JsonEditor = () => {
 
     // 延迟格式化
     formatTimerRef.current = setTimeout(() => {
-      console.log('Executing formatJson...');
       try {
         JSON.parse(inputJson);
         formatJson();
@@ -75,8 +61,7 @@ export const JsonEditor = () => {
         if (!hasFormattedInitialRef.current) {
           hasFormattedInitialRef.current = true;
         }
-      } catch (error) {
-        console.log('JSON parse error:', error);
+      } catch {
         // 忽略格式错误
       }
     }, delay);
@@ -86,7 +71,7 @@ export const JsonEditor = () => {
         clearTimeout(formatTimerRef.current);
       }
     };
-  }, [inputJson]); // 移除 formatJson 依赖，避免重复触发
+  }, [inputJson]);
 
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();

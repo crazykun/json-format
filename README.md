@@ -17,12 +17,15 @@
 
 - 🎨 **Monaco Editor** - VS Code 同款编辑器，提供专业的代码编辑体验
 - ⚡ **自动格式化** - 输入后 500ms 自动格式化，无需手动点击
+- 🌙 **深色模式** - 支持浅色/深色主题切换，护眼舒适
 - 📱 **响应式设计** - 完美适配桌面、平板和移动设备
 - 🎯 **简约绿色风格** - 清爽的界面设计，最大化编辑器空间
 - 🚀 **实时处理** - JSON 格式化、压缩、验证
+- 🔗 **嵌套解析** - 智能解析嵌套的 JSON 字符串
 - 📂 **拖拽上传** - 支持拖拽 JSON 文件直接加载
 - 💾 **便捷导出** - 一键复制或下载格式化结果
 - 🔔 **智能通知** - 操作结果实时反馈，不遮挡界面
+- 💾 **智能缓存** - 自动保存输入内容，刷新页面不丢失
 
 ## 🚀 快速开始
 
@@ -78,6 +81,8 @@ npm run preview
 | 清空 | 🗑️ | 清空所有内容 |
 | 复制 | 📋 | 复制输出结果到剪贴板 |
 | 下载 | 💾 | 下载为 JSON 文件 |
+| 嵌套解析 | 🔗 | 智能解析嵌套的 JSON 字符串 |
+| 深色模式 | 🌙/☀️ | 切换浅色/深色主题 |
 
 ### 拖拽上传
 
@@ -97,7 +102,7 @@ npm run preview
 ### 主要依赖
 - **Monaco Editor** - VS Code 的编辑器核心
 - **Zustand** - 轻量级状态管理（<1KB）
-- **Tailwind CSS** - 实用优先的 CSS 框架
+- **Tailwind CSS** - 实用优先的 CSS 框架（支持深色模式）
 - **file-saver** - 文件下载工具
 - **clsx** - 条件类名工具
 
@@ -120,13 +125,14 @@ json-format/
 │   │   └── useJsonStore.ts  # Zustand store
 │   ├── utils/               # 工具函数
 │   │   ├── fileUtils.ts     # 文件操作
-│   │   └── debounce.ts      # 防抖函数
+│   │   ├── storage.ts       # 本地存储工具
+│   │   └── monacoTheme.ts   # Monaco 编辑器主题
 │   ├── types/               # TypeScript 类型定义
 │   │   └── index.ts
 │   ├── config.ts            # 应用配置
 │   ├── App.tsx              # 主应用组件
 │   ├── main.tsx             # 应用入口
-│   └── index.css            # 全局样式
+│   └── index.css            # 全局样式（含深色模式）
 ├── public/                  # 静态资源
 │   ├── favicon.ico
 │   └── sample.json          # 示例数据
@@ -153,10 +159,12 @@ export const config: AppConfig = {
     enableKeyboardShortcuts: true,  // 启用键盘快捷键
     enableNotifications: true,      // 启用通知提示
     enableAutoFormat: true,         // 启用自动格式化
+    enableNestedParse: true,        // 启用嵌套解析
+    enableDarkMode: true,           // 启用深色模式
     // ...
   },
   ui: {
-    theme: 'light',                 // 主题
+    theme: 'light',                 // 默认主题 ('light' | 'dark')
     maxFileSize: 10 * 1024 * 1024, // 最大文件 10MB
     debounceDelay: 300,            // 防抖延迟
   },
@@ -171,6 +179,19 @@ export const config: AppConfig = {
   },
 };
 ```
+
+### 深色模式配置
+
+深色模式通过 Tailwind CSS 的 `dark:` 前缀实现，配置在 `tailwind.config.js` 中：
+
+```javascript
+export default {
+  darkMode: 'class', // 基于 class 的深色模式
+  // ...
+}
+```
+
+主题状态保存在 localStorage 中，页面刷新时会自动恢复用户的主题偏好。
 
 ## 📱 响应式设计
 
@@ -239,29 +260,35 @@ module.exports = {
 
 ## 🎉 更新日志
 
-### v2.0.0 (2025-12-10)
+### v2.0.0 (2025-12-11)
 
 **🎨 全新设计**
 - 简约绿色配色方案
+- 深色模式支持，护眼舒适
 - 最大化编辑器显示空间
 - 优化移动端适配
 
 **⚡ 新功能**
-- 自动格式化（输入 500ms 后自动触发）
-- 完整的响应式设计支持
-- 按钮图标优化
+- 🌙 **深色模式** - 支持浅色/深色主题切换
+- 🔗 **嵌套解析** - 智能解析嵌套的 JSON 字符串
+- ⚡ **自动格式化** - 输入 500ms 后自动触发
+- 💾 **智能缓存** - 自动保存输入内容和设置
+- 📱 **完整响应式** - 完美适配所有设备
+- 🎯 **按钮图标优化** - 更直观的操作界面
 
 **🔧 技术升级**
 - 完全重构：React + TypeScript + Vite
 - Monaco Editor 提供专业编辑体验
 - Zustand 轻量级状态管理
-- Tailwind CSS 现代化样式系统
+- Tailwind CSS 现代化样式系统（支持深色模式）
+- 优化的主题预加载，避免白屏闪动
 
 **📦 优化**
 - 更好的类型安全
 - 更快的构建速度
 - 更小的包体积
 - 更好的代码组织
+- 修复 StrictMode 下的重复执行问题
 
 ### v1.0.0
 

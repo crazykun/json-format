@@ -1,6 +1,5 @@
 import { useJsonStore } from '../store/useJsonStore';
 import { copyToClipboard, downloadJsonFile } from '../utils/fileUtils';
-import { storage } from '../utils/storage';
 
 export const Header = () => {
   const {
@@ -44,10 +43,7 @@ export const Header = () => {
     }
   };
 
-  const handleClearCache = () => {
-    storage.clearAll();
-    addNotification('success', '缓存已清除，刷新页面生效');
-  };
+
 
   return (
     <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 transition-colors duration-200">
