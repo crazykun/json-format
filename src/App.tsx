@@ -14,23 +14,11 @@ function App() {
     console.log(`JSON 格式化工具 v${config.version}`);
     console.log(`构建日期: ${config.buildDate}`);
 
-    // 如果有缓存的输入内容，自动格式化
-    if (inputJson) {
-      setTimeout(() => {
-        try {
-          JSON.parse(inputJson);
-          formatJson();
-        } catch {
-          // 忽略格式错误
-        }
-      }, 500);
-    }
-
     // Keyboard shortcuts
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!config.features.enableKeyboardShortcuts) return;
 
-      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const isMac = navigator.userAgent.toUpperCase().indexOf('MAC') >= 0;
       const ctrlKey = isMac ? e.metaKey : e.ctrlKey;
 
       if (ctrlKey && e.key === 'Enter') {
@@ -41,7 +29,7 @@ function App() {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [formatJson, inputJson]);
+  }, [formatJson]);
 
   // 同步主题到HTML类
   useEffect(() => {
@@ -50,7 +38,7 @@ function App() {
     } else {
       document.documentElement.classList.remove('dark');
     }
-    
+
     // 组件挂载后重新启用过渡动画
     setTimeout(() => {
       document.documentElement.style.removeProperty('--initial-transition');
