@@ -1,8 +1,17 @@
-import { useRef, useEffect, useState, useCallback } from 'react';
-import Editor, { OnMount } from '@monaco-editor/react';
+import { useRef, useEffect, useState, useCallback, lazy, Suspense } from 'react';
+// 动态导入 Monaco Editor
+const Editor = lazy(() => import('@monaco-editor/react').then(mod => ({ default: mod.default })));
 import { useJsonStore } from '../store/useJsonStore';
 import { readFileAsText } from '../utils/fileUtils';
 import type { editor } from 'monaco-editor';
+import type { OnMount } from '@monaco-editor/react';
+
+// Loading 组件
+const EditorLoading = () => (
+  <div className="flex items-center justify-center h-full">
+    <div className="text-gray-500 dark:text-gray-400">加载编辑器中...</div>
+  </div>
+);
 
 export const JsonEditor = () => {
   const {
@@ -26,11 +35,11 @@ export const JsonEditor = () => {
   const [leftWidth, setLeftWidth] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
 
-  const handleInputMount: OnMount = (editor) => {
+  const handleInputMount: OnMount = (editor: editor.IStandaloneCodeEditor) => {
     inputEditorRef.current = editor;
   };
 
-  const handleOutputMount: OnMount = (editor) => {
+  const handleOutputMount: OnMount = (editor: editor.IStandaloneCodeEditor) => {
     outputEditorRef.current = editor;
   };
 
@@ -163,29 +172,31 @@ export const JsonEditor = () => {
             onDragOver={handleDragOver}
             className="flex-1 overflow-hidden"
           >
-            <Editor
-              height="100%"
-              defaultLanguage="json"
-              value={inputJson}
-              onChange={(value) => setInputJson(value || '')}
-              onMount={handleInputMount}
-              theme={theme === 'light' ? 'vs' : 'vs-dark'}
-              options={{
-                minimap: { enabled: false },
-                fontSize: 14,
-                lineNumbers: 'on',
-                scrollBeyondLastLine: false,
-                wordWrap: 'on',
-                automaticLayout: true,
-                fontFamily: "'Consolas', 'Monaco', monospace",
-                padding: { top: 8, bottom: 8 },
-                scrollbar: {
-                  verticalScrollbarSize: 8,
-                  horizontalScrollbarSize: 8,
-                },
-                placeholder: '在此输入或粘贴 JSON 数据...\n支持拖拽 .json 文件',
-              }}
-            />
+            <Suspense fallback={<EditorLoading />}>
+              <Editor
+                height="100%"
+                defaultLanguage="json"
+                value={inputJson}
+                onChange={(value) => setInputJson(value || '')}
+                onMount={handleInputMount}
+                theme={theme === 'light' ? 'vs' : 'vs-dark'}
+                options={{
+                  minimap: { enabled: false },
+                  fontSize: 14,
+                  lineNumbers: 'on',
+                  scrollBeyondLastLine: false,
+                  wordWrap: 'on',
+                  automaticLayout: true,
+                  fontFamily: "'Consolas', 'Monaco', monospace",
+                  padding: { top: 8, bottom: 8 },
+                  scrollbar: {
+                    verticalScrollbarSize: 8,
+                    horizontalScrollbarSize: 8,
+                  },
+                  placeholder: '在此输入或粘贴 JSON 数据...\n支持拖拽 .json 文件',
+                }}
+              />
+            </Suspense>
           </div>
         </div>
 
@@ -210,28 +221,30 @@ export const JsonEditor = () => {
             )}
           </div>
           <div className="flex-1 overflow-hidden">
-            <Editor
-              height="100%"
-              defaultLanguage="json"
-              value={outputJson}
-              onMount={handleOutputMount}
-              theme={theme === 'light' ? 'vs' : 'vs-dark'}
-              options={{
-                readOnly: true,
-                minimap: { enabled: false },
-                fontSize: 14,
-                lineNumbers: 'on',
-                scrollBeyondLastLine: false,
-                wordWrap: 'on',
-                automaticLayout: true,
-                fontFamily: "'Consolas', 'Monaco', monospace",
-                padding: { top: 8, bottom: 8 },
-                scrollbar: {
-                  verticalScrollbarSize: 8,
-                  horizontalScrollbarSize: 8,
-                },
-              }}
-            />
+            <Suspense fallback={<EditorLoading />}>
+              <Editor
+                height="100%"
+                defaultLanguage="json"
+                value={outputJson}
+                onMount={handleOutputMount}
+                theme={theme === 'light' ? 'vs' : 'vs-dark'}
+                options={{
+                  readOnly: true,
+                  minimap: { enabled: false },
+                  fontSize: 14,
+                  lineNumbers: 'on',
+                  scrollBeyondLastLine: false,
+                  wordWrap: 'on',
+                  automaticLayout: true,
+                  fontFamily: "'Consolas', 'Monaco', monospace",
+                  padding: { top: 8, bottom: 8 },
+                  scrollbar: {
+                    verticalScrollbarSize: 8,
+                    horizontalScrollbarSize: 8,
+                  },
+                }}
+              />
+            </Suspense>
           </div>
         </div>
       </div>

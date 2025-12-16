@@ -16,6 +16,19 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    sourcemap: false, // 生产环境关闭 sourcemap
+    rollupOptions: {
+      output: {
+        // 分割 chunks
+        manualChunks: {
+          'monaco-editor': ['@monaco-editor/react'],
+          'lodash': ['lodash-es'],
+        }
+      }
+    }
   },
+  // 优化预构建
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'zustand', '@monaco-editor/react']
+  }
 })
