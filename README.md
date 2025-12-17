@@ -11,7 +11,7 @@
 
 ## 📸 预览
 
-![JSON 格式化工具截图](images/screenshot.png)
+![JSON 格式化工具截图](images/screenshot.jpg)
 ![JSON 格式化工具截图-kiro主题](images/screenshot-kiro.png)
 
 ## ✨ 主要特性
