@@ -1,3 +1,5 @@
+import { ThemeType } from './monacoTheme';
+
 // localStorage 缓存工具
 const STORAGE_KEYS = {
   THEME: 'json-formatter-theme',
@@ -17,16 +19,16 @@ const DEFAULT_EXPIRE_TIME = 24 * 60 * 60 * 1000;
 
 export const storage = {
   // 主题设置
-  getTheme: (): 'light' | 'dark' => {
+  getTheme: (): ThemeType => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEYS.THEME);
-      return saved === 'dark' ? 'dark' : 'light';
+      const saved = localStorage.getItem(STORAGE_KEYS.THEME) as ThemeType;
+      return ['light', 'dark', 'kiro-dark', 'monokai'].includes(saved) ? saved : 'light';
     } catch {
       return 'light';
     }
   },
 
-  setTheme: (theme: 'light' | 'dark') => {
+  setTheme: (theme: ThemeType) => {
     try {
       localStorage.setItem(STORAGE_KEYS.THEME, theme);
     } catch {

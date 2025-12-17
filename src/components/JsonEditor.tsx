@@ -3,6 +3,7 @@ import { useRef, useEffect, useState, useCallback, lazy, Suspense } from 'react'
 const Editor = lazy(() => import('@monaco-editor/react').then(mod => ({ default: mod.default })));
 import { useJsonStore } from '../store/useJsonStore';
 import { readFileAsText } from '../utils/fileUtils';
+import { registerCustomThemes, getSafeTheme } from '../utils/monacoTheme';
 import type { editor } from 'monaco-editor';
 import type { OnMount } from '@monaco-editor/react';
 
@@ -34,13 +35,21 @@ export const JsonEditor = () => {
   // 左侧面板宽度百分比 (0-100)
   const [leftWidth, setLeftWidth] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
+  // 跟踪自定义主题是否已注册
+  const [areCustomThemesRegistered, setAreCustomThemesRegistered] = useState(false);
 
-  const handleInputMount: OnMount = (editor: editor.IStandaloneCodeEditor) => {
+  const handleInputMount: OnMount = (editor: editor.IStandaloneCodeEditor, monaco) => {
     inputEditorRef.current = editor;
+    // 注册自定义主题
+    registerCustomThemes(monaco);
+    setAreCustomThemesRegistered(true);
   };
 
-  const handleOutputMount: OnMount = (editor: editor.IStandaloneCodeEditor) => {
+  const handleOutputMount: OnMount = (editor: editor.IStandaloneCodeEditor, monaco) => {
     outputEditorRef.current = editor;
+    // 注册自定义主题
+    registerCustomThemes(monaco);
+    setAreCustomThemesRegistered(true);
   };
 
   // 监听输入变化，自动格式化
@@ -148,6 +157,16 @@ export const JsonEditor = () => {
     };
   }, [isDragging, handleMouseMove, handleMouseUp]);
 
+  // 当自定义主题注册后，更新编辑器主题
+  useEffect(() => {
+    if (areCustomThemesRegistered && (theme === 'monokai' || theme === 'kiro-dark')) {
+      // 更新编辑器主题
+      if (inputEditorRef.current || outputEditorRef.current) {
+        (window as any).monaco?.editor.setTheme(theme);
+      }
+    }
+  }, [areCustomThemesRegistered, theme]);
+
   return (
     <main className="flex-1 overflow-hidden flex flex-col md:flex-row p-2 sm:p-3">
       <div
@@ -179,7 +198,7 @@ export const JsonEditor = () => {
                 value={inputJson}
                 onChange={(value) => setInputJson(value || '')}
                 onMount={handleInputMount}
-                theme={theme === 'light' ? 'vs' : 'vs-dark'}
+                theme={getSafeTheme(theme, areCustomThemesRegistered)}
                 options={{
                   minimap: { enabled: false },
                   fontSize: 14,
@@ -227,7 +246,7 @@ export const JsonEditor = () => {
                 defaultLanguage="json"
                 value={outputJson}
                 onMount={handleOutputMount}
-                theme={theme === 'light' ? 'vs' : 'vs-dark'}
+                theme={getSafeTheme(theme, areCustomThemesRegistered)}
                 options={{
                   readOnly: true,
                   minimap: { enabled: false },

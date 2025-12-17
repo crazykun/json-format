@@ -33,10 +33,16 @@ function App() {
 
   // 同步主题到HTML类
   useEffect(() => {
+    // 移除所有主题类
+    document.documentElement.classList.remove('dark', 'kiro-dark', 'monokai');
+    
+    // 添加当前主题类
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+    } else if (theme === 'kiro-dark') {
+      document.documentElement.classList.add('kiro-dark');
+    } else if (theme === 'monokai') {
+      document.documentElement.classList.add('monokai');
     }
 
     // 组件挂载后重新启用过渡动画

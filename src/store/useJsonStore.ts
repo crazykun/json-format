@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { JsonState, Notification, NotificationType } from '../types';
 import { storage } from '../utils/storage';
+import { ThemeType } from '../utils/monacoTheme';
 
 // 定义 JSON 数据类型的联合类型
 type JsonValue = string | number | boolean | null | JsonObject | JsonArray;
@@ -12,7 +13,7 @@ type JsonArray = JsonValue[];
 interface JsonStore extends JsonState {
   notifications: Notification[];
   enableNestedParse: boolean;
-  theme: 'light' | 'dark';
+  theme: ThemeType;
 
   // Actions
   setInputJson: (json: string) => void;
@@ -22,6 +23,7 @@ interface JsonStore extends JsonState {
   setIsCompressed: (isCompressed: boolean) => void;
   toggleNestedParse: () => void;
   toggleTheme: () => void;
+  setTheme: (theme: ThemeType) => void;
 
   // JSON Operations
   parseNestedJson: (obj: JsonValue) => JsonValue;
@@ -73,10 +75,51 @@ export const useJsonStore = create<JsonStore>((set, get) => ({
 
   toggleTheme: () => {
     const currentTheme = get().theme;
-    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    let newTheme: ThemeType;
+    
+    // 循环切换主题：light -> dark -> kiro-dark -> monokai -> light
+    switch (currentTheme) {
+      case 'light':
+        newTheme = 'dark';
+        break;
+      case 'dark':
+        newTheme = 'kiro-dark';
+        break;
+      case 'kiro-dark':
+        newTheme = 'monokai';
+        break;
+      case 'monokai':
+        newTheme = 'light';
+        break;
+      default:
+        newTheme = 'light';
+    }
+    
     set({ theme: newTheme });
     storage.setTheme(newTheme);
-    get().addNotification('success', `已切换到${newTheme === 'light' ? '浅色' : '深色'}主题`);
+    
+    const themeNames = {
+      light: '浅色',
+      dark: '深色',
+      'kiro-dark': 'Kiro',
+      monokai: 'Monokai'
+    };
+    
+    get().addNotification('success', `已切换到${themeNames[newTheme]}主题`);
+  },
+
+  setTheme: (theme) => {
+    set({ theme });
+    storage.setTheme(theme);
+    
+    const themeNames = {
+      light: '浅色',
+      dark: '深色',
+      'kiro-dark': 'Kiro',
+      monokai: 'Monokai'
+    };
+    
+    get().addNotification('success', `已切换到${themeNames[theme]}主题`);
   },
 
   // 递归解析嵌套的 JSON 字符串
