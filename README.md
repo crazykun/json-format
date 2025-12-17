@@ -12,12 +12,13 @@
 ## 📸 预览
 
 ![JSON 格式化工具截图](images/screenshot.png)
+![JSON 格式化工具截图-kiro主题](images/screenshot-kiro.png)
 
 ## ✨ 主要特性
 
 - 🎨 **Monaco Editor** - VS Code 同款编辑器，提供专业的代码编辑体验
 - ⚡ **自动格式化** - 输入后 500ms 自动格式化，无需手动点击
-- 🌙 **深色模式** - 支持浅色/深色主题切换，护眼舒适
+- 🎨 **多主题支持** - 4 种精美主题：浅色、深色、Kiro、Monokai
 - 📱 **响应式设计** - 完美适配桌面、平板和移动设备
 - 🚀 **实时处理** - JSON 格式化、压缩、验证
 - 🔗 **嵌套解析** - 智能解析嵌套的 JSON 字符串
@@ -78,11 +79,15 @@ npm run preview
 | 复制 | 📋 | 复制输出结果到剪贴板 |
 | 下载 | 💾 | 下载为 JSON 文件 |
 | 嵌套解析 | 🔗 | 智能解析嵌套的 JSON 字符串 |
-| 深色模式 | 🌙/☀️ | 切换浅色/深色主题 |
+| 主题切换 | 💎 | 4 种主题：浅色、深色、Kiro、Monokai |
 
 ### 拖拽上传
 
 直接将 `.json` 文件拖拽到左侧编辑器即可自动加载。
+
+### 主题切换
+
+应用提供 4 种精美主题，满足不同使用场景和个人偏好：
 
 ### 键盘快捷键
 
@@ -157,7 +162,7 @@ export const config: AppConfig = {
     // ...
   },
   ui: {
-    theme: 'light',                 // 默认主题 ('light' | 'dark')
+    theme: 'light',                 // 默认主题 ('light' | 'dark' | 'kiro-dark' | 'monokai')
     maxFileSize: 10 * 1024 * 1024, // 最大文件 10MB
     debounceDelay: 300,            // 防抖延迟
   },
@@ -173,15 +178,38 @@ export const config: AppConfig = {
 };
 ```
 
-### 深色模式配置
+### 主题配置
 
-深色模式通过 Tailwind CSS 的 `dark:` 前缀实现，配置在 `tailwind.config.js` 中：
+应用支持 4 种精美主题，通过 Tailwind CSS 和 Monaco Editor 自定义主题实现：
+
+#### 可用主题
+
+- **☀️ 浅色** - 经典的白色主题，适合日间使用
+- **🌙 深色** - 标准的深色主题，护眼舒适
+- **💎 Kiro** - 专业级深色主题，采用现代 slate 配色
+- **🎨 Monokai** - 经典的编程主题，复古而优雅
+
+#### 技术实现
 
 ```javascript
+// tailwind.config.js
 export default {
-  darkMode: 'class', // 基于 class 的深色模式
+  darkMode: ['class', '[class~="dark"]'], // 支持多主题类
   // ...
 }
+```
+
+```typescript
+// Monaco Editor 自定义主题
+export const kiroDarkTheme: editor.IStandaloneThemeData = {
+  base: 'vs-dark',
+  inherit: true,
+  colors: {
+    'editor.background': '#0F172A', // slate-900
+    'editor.foreground': '#E5E7EB', // gray-200
+    // ...
+  }
+};
 ```
 
 主题状态保存在 localStorage 中，页面刷新时会自动恢复用户的主题偏好。
@@ -204,6 +232,24 @@ export default {
 
 ## 🎉 更新日志
 
+### v2.1.0 (2025-12-17)
+
+#### 🎨 主题系统升级
+
+- **4 种精美主题** - 新增 Kiro 和 Monokai 主题
+- **💎 Kiro 主题** - 专业级深色主题，采用现代 slate 配色
+- **🎨 Monokai 主题** - 经典编程主题，复古而优雅
+- **主题选择器** - 下拉菜单直接选择，支持循环切换
+- **Monaco 编辑器主题** - 完整的语法高亮和配色方案
+- **固定按钮宽度** - 优化主题按钮布局，防止文本换行
+
+#### 🔧 技术优化
+
+- 自定义 Monaco Editor 主题注册
+- 主题安全回退机制，避免刷新后显示错误
+- 优化 CSS 样式层级，确保主题一致性
+- 改进响应式设计，适配不同屏幕尺寸
+
 ### v2.0.0 (2025-12-11)
 
 #### 🎨 全新设计
@@ -215,7 +261,7 @@ export default {
 
 #### ⚡ 新功能
 
-- 🌙 **深色模式** - 支持浅色/深色主题切换
+- 🎨 **多主题支持** - 4 种精美主题：浅色、深色、Kiro、Monokai
 - 🔗 **嵌套解析** - 智能解析嵌套的 JSON 字符串
 - ⚡ **自动格式化** - 输入 500ms 后自动触发
 - 💾 **智能缓存** - 自动保存输入内容和设置
@@ -227,7 +273,7 @@ export default {
 - 完全重构：React + TypeScript + Vite
 - Monaco Editor 提供专业编辑体验
 - Zustand 轻量级状态管理
-- Tailwind CSS 现代化样式系统（支持深色模式）
+- Tailwind CSS 现代化样式系统（支持多主题）
 - 优化的主题预加载，避免白屏闪动
 
 #### 📦 优化
