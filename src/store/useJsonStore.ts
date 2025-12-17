@@ -82,6 +82,14 @@ export const useJsonStore = create<JsonStore>((set, get) => ({
   // 递归解析嵌套的 JSON 字符串
   parseNestedJson: (obj: JsonValue): JsonValue => {
     if (typeof obj === 'string') {
+      // 检查是否为纯数字字符串（包括小数和负数）
+      const isNumericString = /^-?\d+(\.\d+)?$/.test(obj.trim());
+      
+      // 如果是纯数字字符串，保持为字符串不解析
+      if (isNumericString) {
+        return obj;
+      }
+      
       try {
         // 尝试解析字符串为 JSON
         const parsed = JSON.parse(obj);
