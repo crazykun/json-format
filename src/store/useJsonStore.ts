@@ -10,9 +10,12 @@ interface JsonObject {
 }
 type JsonArray = JsonValue[];
 
+// 嵌套解析模式
+type NestedParseMode = 'off' | 'level1' | 'level2' | 'all';
+
 interface JsonStore extends JsonState {
   notifications: Notification[];
-  enableNestedParse: boolean;
+  nestedParseMode: NestedParseMode;
   theme: ThemeType;
 
   // Actions
@@ -21,12 +24,12 @@ interface JsonStore extends JsonState {
   setError: (error: string | null) => void;
   setIsValid: (isValid: boolean) => void;
   setIsCompressed: (isCompressed: boolean) => void;
-  toggleNestedParse: () => void;
+  setNestedParseMode: (mode: NestedParseMode) => void;
   toggleTheme: () => void;
   setTheme: (theme: ThemeType) => void;
 
   // JSON Operations
-  parseNestedJson: (obj: JsonValue) => JsonValue;
+  parseNestedJson: (obj: JsonValue, currentDepth?: number) => JsonValue;
   formatJson: () => void;
   compressJson: () => void;
   validateJson: () => boolean;
@@ -45,7 +48,7 @@ export const useJsonStore = create<JsonStore>((set, get) => ({
   isCompressed: false,
   error: null,
   notifications: [],
-  enableNestedParse: storage.getNestedParse(),
+  nestedParseMode: storage.getNestedParseMode(),
   theme: storage.getTheme(),
 
   // Setters
@@ -57,15 +60,20 @@ export const useJsonStore = create<JsonStore>((set, get) => ({
   setError: (error) => set({ error }),
   setIsValid: (isValid) => set({ isValid }),
   setIsCompressed: (isCompressed) => set({ isCompressed }),
-  toggleNestedParse: () => {
-    const newValue = !get().enableNestedParse;
-    set({ enableNestedParse: newValue });
-    storage.setNestedParse(newValue);
-    get().addNotification(
-      'success',
-      newValue ? '已启用嵌套解析' : '已禁用嵌套解析'
-    );
-    // 切换后自动执行一次格式化
+  setNestedParseMode: (mode) => {
+    set({ nestedParseMode: mode });
+    storage.setNestedParseMode(mode);
+    
+    const modeNames = {
+      off: '关闭嵌套解析',
+      level1: '1层嵌套解析',
+      level2: '2层嵌套解析',
+      all: '全部嵌套解析'
+    };
+    
+    get().addNotification('success', modeNames[mode]);
+    
+    // 设置后自动执行一次格式化
     if (get().inputJson) {
       setTimeout(() => {
         get().formatJson();
@@ -122,8 +130,33 @@ export const useJsonStore = create<JsonStore>((set, get) => ({
     get().addNotification('success', `已切换到${themeNames[theme]}主题`);
   },
 
-  // 递归解析嵌套的 JSON 字符串
-  parseNestedJson: (obj: JsonValue): JsonValue => {
+  // 递归解析嵌套的 JSON 字符串，支持层级控制
+  parseNestedJson: (obj: JsonValue, currentDepth: number = 0): JsonValue => {
+    const { nestedParseMode } = get();
+    
+    // 根据模式确定最大解析深度
+    let maxDepth: number;
+    switch (nestedParseMode) {
+      case 'off':
+        return obj; // 不解析
+      case 'level1':
+        maxDepth = 1;
+        break;
+      case 'level2':
+        maxDepth = 2;
+        break;
+      case 'all':
+        maxDepth = Infinity; // 无限制
+        break;
+      default:
+        return obj;
+    }
+    
+    // 如果当前深度已达到设定的解析深度，停止递归解析
+    if (currentDepth >= maxDepth) {
+      return obj;
+    }
+    
     if (typeof obj === 'string') {
       // 检查是否为纯数字字符串（包括小数和负数）
       const isNumericString = /^-?\d+(\.\d+)?$/.test(obj.trim());
@@ -136,18 +169,18 @@ export const useJsonStore = create<JsonStore>((set, get) => ({
       try {
         // 尝试解析字符串为 JSON
         const parsed = JSON.parse(obj);
-        // 递归处理解析后的对象
-        return get().parseNestedJson(parsed);
+        // 递归处理解析后的对象，深度加1
+        return get().parseNestedJson(parsed, currentDepth + 1);
       } catch {
         // 不是有效的 JSON 字符串，直接返回
         return obj;
       }
     } else if (Array.isArray(obj)) {
-      return obj.map(item => get().parseNestedJson(item));
+      return obj.map(item => get().parseNestedJson(item, currentDepth));
     } else if (obj !== null && typeof obj === 'object') {
       const result: JsonObject = {};
       for (const key in obj) {
-        result[key] = get().parseNestedJson(obj[key]);
+        result[key] = get().parseNestedJson(obj[key], currentDepth);
       }
       return result;
     }
@@ -156,11 +189,11 @@ export const useJsonStore = create<JsonStore>((set, get) => ({
 
   // JSON Operations
   formatJson: () => {
-    const { inputJson, enableNestedParse } = get();
+    const { inputJson, nestedParseMode } = get();
     try {
       const parsed = JSON.parse(inputJson);
-      // 根据开关决定是否递归解析嵌套的 JSON 字符串
-      const result = enableNestedParse ? get().parseNestedJson(parsed) : parsed;
+      // 根据模式决定是否递归解析嵌套的 JSON 字符串
+      const result = nestedParseMode !== 'off' ? get().parseNestedJson(parsed, 0) : parsed;
       const formatted = JSON.stringify(result, null, 2);
       set({
         outputJson: formatted,

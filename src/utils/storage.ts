@@ -1,9 +1,12 @@
 import { ThemeType } from './monacoTheme';
 
+// 嵌套解析模式
+export type NestedParseMode = 'off' | 'level1' | 'level2' | 'all';
+
 // localStorage 缓存工具
 const STORAGE_KEYS = {
   THEME: 'json-formatter-theme',
-  NESTED_PARSE: 'json-formatter-nested-parse',
+  NESTED_PARSE_MODE: 'json-formatter-nested-parse-mode',
   INPUT_JSON: 'json-formatter-input-json',
 } as const;
 
@@ -36,19 +39,19 @@ export const storage = {
     }
   },
 
-  // 嵌套解析设置
-  getNestedParse: (): boolean => {
+  // 嵌套解析模式设置
+  getNestedParseMode: (): NestedParseMode => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEYS.NESTED_PARSE);
-      return saved === 'true';
+      const saved = localStorage.getItem(STORAGE_KEYS.NESTED_PARSE_MODE) as NestedParseMode;
+      return ['off', 'level1', 'level2', 'all'].includes(saved) ? saved : 'off';
     } catch {
-      return false;
+      return 'off';
     }
   },
 
-  setNestedParse: (enabled: boolean) => {
+  setNestedParseMode: (mode: NestedParseMode) => {
     try {
-      localStorage.setItem(STORAGE_KEYS.NESTED_PARSE, enabled.toString());
+      localStorage.setItem(STORAGE_KEYS.NESTED_PARSE_MODE, mode);
     } catch {
       // 忽略存储错误
     }
