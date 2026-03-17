@@ -26,4 +26,12 @@ export default {
     },
   },
   plugins: [],
+  // 生产环境优化：移除未使用的 CSS
+  future: {
+    purgeLayersByDefault: true,
+  },
+  // 核心插件配置
+  corePlugins: {
+    preflight: true,
+  },
 }
