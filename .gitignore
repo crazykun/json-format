@@ -57,3 +57,7 @@ CLAUDE.md
 
 # WorkBuddy 工作区数据
 .workbuddy/
+
+# 部署脚本：本地维护，不入库
+# deploy.sh 会通过 raw URL 拉取，入库后版本容易与服务器上的失步
+deploy/
