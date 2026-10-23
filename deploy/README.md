@@ -23,20 +23,21 @@
 ### 目录结构
 
 ```
-/www/wwwroot/json-format/
-├── deploy.sh              ← deploy/deploy.sh 上传到这里
+/www/wwwroot/json.okkkr.com/
+├── deploy/
+│   └── deploy.sh           ← deploy/deploy.sh 上传到这里
 ├── releases/              ← 各版本目录，自动管理
 │   ├── v2.1.1/            ← 旧版本（保留 5 个）
 │   └── v2.1.2/            ← 当前版本
 └── current -> releases/v2.1.2   ← nginx root 指向这里
 ```
 
-### nginx root 改成current（关键）
+### nginx root 改成 current（关键）
 
 宝塔面板 → 网站 → `json.okkkr.com` → **设置 → 配置文件**，把 `root` 改成：
 
 ```nginx
-root /www/wwwroot/json-format/current;
+root /www/wwwroot/json.okkkr.com/current;
 ```
 
 ⚠️ **这一步不做，部署了也不会生效** —— nginx 还在读旧路径。改完点「保存」，宝塔会自己重载。
@@ -60,9 +61,20 @@ location = /index.html {
 
 ```bash
 # 本地仓库目录执行
-ssh root@你的服务器 'mkdir -p /www/wwwroot/json-format/releases'
-scp deploy/deploy.sh root@你的服务器:/www/wwwroot/json-format/deploy.sh
-ssh root@你的服务器 'chmod +x /www/wwwroot/json-format/deploy.sh'
+ssh root@你的服务器 'mkdir -p /www/wwwroot/json.okkkr.com/releases /www/wwwroot/json.okkkr.com/deploy'
+scp deploy/deploy.sh root@你的服务器:/www/wwwroot/json.okkkr.com/deploy/
+ssh root@你的服务器 'chmod +x /www/wwwroot/json.okkkr.com/deploy/deploy.sh'
+```
+
+也可以只上传一次，让脚本以后跟着仓库更新：
+
+```bash
+# 把 deploy.sh 从仓库 raw 地址拉下来
+ssh root@你的服务器 \
+  'mkdir -p /www/wwwroot/json.okkkr.com/deploy && \
+   curl -fsSL https://raw.githubusercontent.com/crazykun/json-format/main/deploy/deploy.sh \
+     -o /www/wwwroot/json.okkkr.com/deploy/deploy.sh && \
+   chmod +x /www/wwwroot/json.okkkr.com/deploy/deploy.sh'
 ```
 
 ---
@@ -188,7 +200,7 @@ ssh -i ~/.ssh/json_format_deploy root@服务器 'echo 连通 OK'   # 验证
 | `SERVER_HOST` | `1.2.3.4` 或服务器域名（不带协议） |
 | `SERVER_USER` | `root` 或 `www` |
 | `SERVER_SSH_KEY` | 上一步的私钥全文 |
-| `DEPLOY_ROOT` | `/www/wwwroot/json-format` |
+| `DEPLOY_ROOT` | `/www/wwwroot/json.okkkr.com` |
 | `KEEP_RELEASES` | `5` |
 | `SMOKE_URL` | `https://json.okkkr.com/`（可留空） |
 
@@ -220,10 +232,10 @@ git tag v2.1.3 && git push origin v2.1.3
 ## 日常运维
 
 ```bash
-cd /www/wwwroot/json-format
+cd /www/wwwroot/json.okkkr.com
 
-./deploy.sh --list              # 看所有版本，标出当前生效的
-./deploy.sh --rollback# 回滚到上一个版本
+./deploy/deploy.sh --list              # 看所有版本，标出当前生效的
+./deploy/deploy.sh --rollback          # 回滚到上一个版本
 ```
 
 紧急回滚也可以直接重新触发 webhook —— 但注意脚本是「追最新版」的，

@@ -10,19 +10,23 @@
 # 优点：不需要 SSH 密钥、不需要在服务器装 node、不需要 git clone，
 #       只做「下载 release 包 → 调 deploy.sh」，失败自动重试。
 #
-# 可在面板 Hook 的「前置脚本」或环境变量里配置：
-#   JSONF_REPO      仓库，默认 crazykun/json-format
-#   DEPLOY_ROOT     部署根目录
-#   DEPLOY_SH       deploy.sh 路径
-#   DEPLOY_RETRY    下载重试次数，默认 3
+# 前置条件：deploy.sh 要放到服务器的
+#   /www/wwwroot/json.okkkr.com/deploy/deploy.sh
+#   （命令：scp deploy/deploy.sh root@服务器:/www/wwwroot/json.okkkr.com/deploy/）
+#
+# 可选：改下面配置区的默认值，或在宝塔 Hook 里用环境变量覆盖
+#   JSONF_REPO           仓库，默认 crazykun/json-format
+#   JSONF_DEPLOY_ROOT    部署根目录，默认 /www/wwwroot/json.okkkr.com
+#   DEPLOY_SH            deploy.sh 路径
+#   DEPLOY_RETRY         下载重试次数，默认 3
 # ==============================================================================
 
 set -uo pipefail
 
 # ------------------------------ 配置 ------------------------------
 : "${JSONF_REPO:=crazykun/json-format}"
-: "${JSONF_DEPLOY_ROOT:=/www/wwwroot/json-format}"
-: "${DEPLOY_SH:=${JSONF_DEPLOY_ROOT}/deploy.sh}"
+: "${JSONF_DEPLOY_ROOT:=/www/wwwroot/json.okkkr.com}"
+: "${DEPLOY_SH:=${JSONF_DEPLOY_ROOT}/deploy/deploy.sh}"
 : "${DEPLOY_RETRY:=3}"
 : "${WORK_DIR:=/tmp/jsonf-deploy}"
 : "${GITHUB_TOKEN:=}"      # 可选，设置了能提高 API 限额、访问私有仓库

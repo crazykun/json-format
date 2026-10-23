@@ -21,14 +21,14 @@
 set -Eeuo pipefail
 
 # ------------------------------ 配置区（可用环境变量覆盖）------------------------------
-: "${DEPLOY_ROOT:=/www/wwwroot/json-format}"      # 部署根目录
+: "${DEPLOY_ROOT:=/www/wwwroot/json.okkkr.com}"    # 部署根目录（与域名同名）
 : "${RELEASES_DIR:=${DEPLOY_ROOT}/releases}"      # 各版本目录
 : "${CURRENT_LINK:=${DEPLOY_ROOT}/current}"       # nginx root 指向的软链接
 : "${KEEP_RELEASES:=5}"                           # 保留最近几个版本
 : "${HEALTH_PORT:=18099}"                         # 健康检查临时端口
 : "${HEALTH_TIMEOUT:=15}"                         # 健康检查超时秒数
 : "${NODE_BIN:=node}"                             # 用 node 起静态服务器做健康检查
-#nginx 可执行路径：宝塔在/www/server/nginx/sbin/nginx，系统 nginx 在 /usr/sbin/nginx
+# nginx 可执行路径：宝塔在 /www/server/nginx/sbin/nginx，系统 nginx 在 /usr/sbin/nginx
 : "${NGINX_BIN:=}"
 
 # ------------------------------ 参数解析 ------------------------------
