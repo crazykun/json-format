@@ -27,10 +27,13 @@ set -uo pipefail
 : "${WORK_DIR:=/tmp/jsonf-deploy}"
 : "${GITHUB_TOKEN:=}"      # 可选，设置了能提高 API 限额、访问私有仓库
 
-# ------------------------------ 日志（宝塔会收集 stdout）------------------------------
+# ------------------------------ 日志 ------------------------------
+# 全部走 stdout，不写 stderr。
+# 原因：宝塔 WebHook 面板只收集 stdout，写 stderr 的错误日志会整段丢失，
+# 表现为「日志停在某一步就没了」，根本看不出哪里失败（实测踩过）。
 log()  { echo "[$(date '+%F %T')] $*"; }
 warn() { echo "[$(date '+%F %T')] WARN $*"; }
-err()  { echo "[$(date '+%F %T')] ERROR $*" >&2; }
+err()  { echo "[$(date '+%F %T')] ERROR $*"; }
 
 # ------------------------------ 幂等锁 ------------------------------
 # 防止 GitHub 短时间内重试导致并发部署
@@ -103,12 +106,19 @@ log "下载完成: $(du -h "$TARBALL" | cut -f1)"
 
 # ------------------------------ 4. 交给 deploy.sh 做原子部署 ------------------------------
 if [[ ! -f "$DEPLOY_SH" ]]; then
-  err "找不到部署脚本 ${DEPLOY_SH}"
-  err "请上传：deploy/deploy.sh → ${DEPLOY_SH}"
+  err "找不到部署脚本：${DEPLOY_SH}"
+  err "→ 这是最常见的失败原因，请上传一次："
+  err "    scp deploy/deploy.sh <用户>@<服务器>:${DEPLOY_SH}"
+  err "→ 或在宝塔 WebHook 脚本里显式指定：DEPLOY_SH=/你的路径/deploy.sh"
+  err "→ 当前部署根目录：${JSONF_DEPLOY_ROOT}，目录是否存在：$([ -d "$JSONF_DEPLOY_ROOT" ] && echo 是 || echo 否)"
+  exit 1
+fi
+if [[ ! -r "$DEPLOY_SH" ]]; then
+  err "部署脚本存在但不可读：${DEPLOY_SH}，检查权限（chmod +x / 属主）"
   exit 1
 fi
 
-log "调用 deploy.sh 原子部署..."
+log "调用 deploy.sh 原子部署（脚本：${DEPLOY_SH}）..."
 DEPLOY_ROOT="$JSONF_DEPLOY_ROOT" bash "$DEPLOY_SH" --version "$TAG" --file "$TARBALL"
 RC=$?
 
@@ -117,7 +127,7 @@ if [[ $RC -eq 0 ]]; then
   log "部署成功：${TAG}"
 else
   # deploy.sh 内部已经做过健康检查与回滚，这里只做清理
-  warn "deploy.sh 返回 ${RC}，线上仍为原版本（已自动回滚）"
+  warn "deploy.sh 返回 ${RC}，线上仍为原版本（deploy.sh 内部已自动回滚）"
   rm -f "$TARBALL"
 fi
 

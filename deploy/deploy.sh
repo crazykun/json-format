@@ -44,7 +44,7 @@ while [[ $# -gt 0 ]]; do
     --rollback) ROLLBACK=1; shift ;;
     --list)     LIST=1; shift ;;
     -h|--help)  sed -n '2,25p' "$0"; exit 0 ;;
-    *) echo "未知参数: $1" >&2; exit 2 ;;
+    *) echo "未知参数: $1"; exit 2 ;;
   esac
 done
 
@@ -54,7 +54,10 @@ old_ver=""
 
 log()  { printf '\033[0;36m[%s] %s\033[0m\n' "$(date '+%F %T')" "$*"; }
 warn() { printf '\033[0;33m[%s] WARN %s\033[0m\n' "$(date '+%F %T')" "$*"; }
-err()  { printf '\033[0;31m[%s] ERROR %s\033[0m\n' "$(date '+%F %T')" "$*" >&2; }
+# 注意：错误一律输出到 stdout 而不是 stderr。
+# 宝塔 WebHook 面板只收集 stdout，写 stderr 的内容会整段丢失，
+# 现象是「日志停在某一步就没了」，完全看不出失败原因（实测踩过）。
+err()  { printf '\033[0;31m[%s] ERROR %s\033[0m\n' "$(date '+%F %T')" "$*"; }
 ok()   { printf '\033[0;32m[%s] OK %s\033[0m\n' "$(date '+%F %T')" "$*"; }
 
 # ------------------------------ 工具函数 ------------------------------
@@ -88,7 +91,7 @@ nginx_reload() {
     warn "nginx -t 因权限不足返回非零，但语法校验通过（需要 root 才能写 pid），继续 reload"
   else
     err "nginx 配置校验失败，保持现状不动："
-    printf '%s\n' "$out" >&2
+    printf '%s\n' "$out"
     return 1
   fi
 
@@ -177,7 +180,7 @@ health_check() {
   while [[ $i -lt $HEALTH_TIMEOUT ]]; do
     if ! kill -0 "$pid" 2>/dev/null; then
       err "临时服务器启动失败："
-      cat /tmp/health_srv.log >&2 || true
+      cat /tmp/health_srv.log || true
       return 1
     fi
     code="$(curl -fsS -o /dev/null -w '%{http_code}' "http://127.0.0.1:${HEALTH_PORT}/index.html" 2>/dev/null || echo 000)"
