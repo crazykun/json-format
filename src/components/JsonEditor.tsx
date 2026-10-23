@@ -1,6 +1,13 @@
-import { useRef, useEffect, useState, useCallback, lazy, Suspense } from 'react';
-// 动态导入 Monaco Editor
-const Editor = lazy(() => import('@monaco-editor/react').then(mod => ({ default: mod.default })));
+import { useRef, useEffect, useState, useCallback, useMemo, lazy, Suspense } from 'react';
+// 动态导入：先跑 setup.ts 把 loader 指向本地打包的 monaco（去掉 CDN 依赖），
+// 再拿 @monaco-editor/react 的 Editor 组件。顺序不能反，否则 loader 会去 CDN 拉包。
+const Editor = lazy(async () => {
+  const [mod] = await Promise.all([
+    import('@monaco-editor/react'),
+    import('../monaco/setup'),
+  ]);
+  return { default: mod.default };
+});
 import { useJsonStore } from '../store/useJsonStore';
 import { readFileAsText } from '../utils/fileUtils';
 import { registerCustomThemes, getSafeTheme } from '../utils/monacoTheme';
@@ -35,8 +42,59 @@ export const JsonEditor = () => {
   // 左侧面板宽度百分比 (0-100)
   const [leftWidth, setLeftWidth] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
+  // 是否为桌面布局：放进 state 而不是 render 时直接读 window.innerWidth，
+  // 否则每次渲染都强制同步布局（layout thrash），拖动分隔条时明显卡顿。
+  const [isDesktop, setIsDesktop] = useState(
+    typeof window !== 'undefined' ? window.innerWidth >= 768 : false
+  );
   // 跟踪自定义主题是否已注册
   const [areCustomThemesRegistered, setAreCustomThemesRegistered] = useState(false);
+
+  // Monaco options 必须是稳定引用：每次渲染新建对象会让 monaco 反复
+  // applyOptions / 重算配置，编辑大 JSON 时输入延迟明显。
+  const inputOptions = useMemo<editor.IStandaloneEditorConstructionOptions>(
+    () => ({
+      minimap: { enabled: false },
+      fontSize: 14,
+      lineNumbers: 'on',
+      scrollBeyondLastLine: false,
+      wordWrap: 'on',
+      automaticLayout: true,
+      fontFamily: "'Consolas', 'Monaco', monospace",
+      padding: { top: 8, bottom: 8 },
+      scrollbar: {
+        verticalScrollbarSize: 8,
+        horizontalScrollbarSize: 8,
+      },
+      placeholder: '在此输入或粘贴 JSON 数据...\n支持拖拽 .json 文件',
+    }),
+    []
+  );
+
+  const outputOptions = useMemo<editor.IStandaloneEditorConstructionOptions>(
+    () => ({
+      readOnly: true,
+      minimap: { enabled: false },
+      fontSize: 14,
+      lineNumbers: 'on',
+      scrollBeyondLastLine: false,
+      wordWrap: 'on',
+      automaticLayout: true,
+      fontFamily: "'Consolas', 'Monaco', monospace",
+      padding: { top: 8, bottom: 8 },
+      scrollbar: {
+        verticalScrollbarSize: 8,
+        horizontalScrollbarSize: 8,
+      },
+    }),
+    []
+  );
+
+  // onChange 同样需要稳定引用，否则每个按键都会让 monaco 重订阅。
+  const handleInputChange = useCallback(
+    (value: string | undefined) => setInputJson(value || ''),
+    [setInputJson]
+  );
 
   const handleInputMount: OnMount = (editor: editor.IStandaloneCodeEditor, monaco) => {
     inputEditorRef.current = editor;
@@ -51,6 +109,13 @@ export const JsonEditor = () => {
     registerCustomThemes(monaco);
     setAreCustomThemesRegistered(true);
   };
+
+  // 监听视口宽度变化，切换桌面/移动布局
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   // 监听输入变化，自动格式化
   useEffect(() => {
@@ -176,8 +241,8 @@ export const JsonEditor = () => {
         <div
           className="flex flex-col bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 overflow-hidden min-h-[250px] sm:min-h-[300px] md:min-h-0 transition-colors duration-200"
           style={{
-            width: window.innerWidth >= 768 ? `${leftWidth}%` : '100%',
-            marginBottom: window.innerWidth < 768 ? '0.75rem' : '0'
+            width: isDesktop ? `${leftWidth}%` : '100%',
+            marginBottom: isDesktop ? '0' : '0.75rem'
           }}
         >
           <div className="flex items-center justify-between px-3 py-1.5 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 transition-colors duration-200">
@@ -196,24 +261,10 @@ export const JsonEditor = () => {
                 height="100%"
                 defaultLanguage="json"
                 value={inputJson}
-                onChange={(value) => setInputJson(value || '')}
+                onChange={handleInputChange}
                 onMount={handleInputMount}
                 theme={getSafeTheme(theme, areCustomThemesRegistered)}
-                options={{
-                  minimap: { enabled: false },
-                  fontSize: 14,
-                  lineNumbers: 'on',
-                  scrollBeyondLastLine: false,
-                  wordWrap: 'on',
-                  automaticLayout: true,
-                  fontFamily: "'Consolas', 'Monaco', monospace",
-                  padding: { top: 8, bottom: 8 },
-                  scrollbar: {
-                    verticalScrollbarSize: 8,
-                    horizontalScrollbarSize: 8,
-                  },
-                  placeholder: '在此输入或粘贴 JSON 数据...\n支持拖拽 .json 文件',
-                }}
+                options={inputOptions}
               />
             </Suspense>
           </div>
@@ -230,7 +281,7 @@ export const JsonEditor = () => {
         <div
           className="flex flex-col bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 overflow-hidden min-h-[250px] sm:min-h-[300px] md:min-h-0 transition-colors duration-200"
           style={{
-            width: window.innerWidth >= 768 ? `${100 - leftWidth}%` : '100%'
+            width: isDesktop ? `${100 - leftWidth}%` : '100%'
           }}
         >
           <div className="flex items-center justify-between px-3 py-1.5 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 transition-colors duration-200">
@@ -247,21 +298,7 @@ export const JsonEditor = () => {
                 value={outputJson}
                 onMount={handleOutputMount}
                 theme={getSafeTheme(theme, areCustomThemesRegistered)}
-                options={{
-                  readOnly: true,
-                  minimap: { enabled: false },
-                  fontSize: 14,
-                  lineNumbers: 'on',
-                  scrollBeyondLastLine: false,
-                  wordWrap: 'on',
-                  automaticLayout: true,
-                  fontFamily: "'Consolas', 'Monaco', monospace",
-                  padding: { top: 8, bottom: 8 },
-                  scrollbar: {
-                    verticalScrollbarSize: 8,
-                    horizontalScrollbarSize: 8,
-                  },
-                }}
+                options={outputOptions}
               />
             </Suspense>
           </div>

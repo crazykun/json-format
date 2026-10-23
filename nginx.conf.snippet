@@ -1,0 +1,66 @@
+# JSON 格式化工具 - nginx 配置片段
+#
+# 关键点：
+# 1. 带 hash 的静态资源（/assets/xxx-HASH.js）内容永不改变，
+#    可以放心 immutable 缓存一年 —— 原配置只有 max-age=43200（12小时），
+#    每次回访都要重新验证，白白多一次 RTT。
+# 2. index.html 绝不能缓存，否则发版后用户拿到的还是旧的资源 hash。
+# 3. 预压缩：构建后跑 `npx vite-plugin-compression` 或手动生成 .br/.gz，
+#    开启 gzip_static 后 nginx 直接送预压缩文件，省 CPU。
+
+gzip on;
+gzip_vary on;
+gzip_comp_level 6;
+gzip_min_length 1024;
+gzip_proxied any;
+# 顺带开 brotli（如果 nginx 编译了 ngx_brotli）
+# brotli on;
+# brotli_static on;
+# brotli_comp_level 5;
+
+server {
+    listen 443 ssl http2;
+    server_name json.okkkr.com;
+
+    root /home/data/www/json-format/dist;
+    index index.html;
+
+    # ---- 带 hash 的构建产物：永久缓存 ----
+    location /assets/ {
+        # 内容随 hash 变化，永远不会失效
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        access_log off;
+        try_files $uri =404;
+    }
+
+    # ---- worker 脚本：也要长缓存 ----
+    location ~* \.worker-[A-Za-z0-9_-]+\.js$ {
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        access_log off;
+        try_files $uri =404;
+    }
+
+    # ---- 字体：codicon，内容不变 ----
+    location ~* \.ttf$ {
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        access_log off;
+    }
+
+    # ---- HTML：永不缓存，保证发版即时生效 ----
+    location = /index.html {
+        add_header Cache-Control "no-cache, must-revalidate" always;
+        add_header X-Content-Type-Options "nosniff" always;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+        # HTML 走这条路径时也不能缓存
+        add_header Cache-Control "no-cache, must-revalidate" always;
+    }
+
+    # 站点地图和静态资源（如果放在根目录）
+    location = /favicon.ico {
+        add_header Cache-Control "public, max-age=604800" always;
+        access_log off;
+    }
+}

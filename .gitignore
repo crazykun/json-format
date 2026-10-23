@@ -54,3 +54,6 @@ out/
 # Claude Code
 .claude/
 CLAUDE.md
+
+# WorkBuddy 工作区数据
+.workbuddy/
