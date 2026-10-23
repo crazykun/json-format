@@ -124,13 +124,42 @@ jobs:
             echo "::notice::package.json 版本已是 $PKG_VERSION，跳过"
           fi
 
-      - name: 打包产物并上传
+      - name: 打包产物为压缩档
         if: ${{ inputs.dry_run != true && github.event_name == 'workflow_dispatch' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: json-format-${{ steps.ver.outputs.version }}
-          path: dist/
-          retention-days: 30
+        run: |
+          set -euo pipefail
+          V="${{ steps.ver.outputs.version }}"
+          NAME="json-format-${V}"
+          PKGDIR="$RUNNER_TEMP/$NAME"
+
+          # 保留 dist/ 原有目录结构：assets/ 与 index.html 的相对位置不能变，
+          # 否则 index.html 里的 /assets/xxx.js 引用会 404。
+          mkdir -p "$PKGDIR"
+          cp -r dist/. "$PKGDIR/"
+
+          # 附带一份说明，下载解压后不用猜怎么部署
+          cat > "$PKGDIR/README.txt" <<'TXT'
+          JSON 格式化工具 - 静态站点产物
+          ====================================
+
+          部署方式：把本目录下的所有文件原样放到任意静态服务器 / CDN / Nginx 站点根目录。
+
+          注意：
+          - assets/ 目录名和内部文件名不能改，index.html 按绝对路径 /assets/xxx.js 引用。
+          - 建议给 /assets/ 下的带 hash 文件设置长缓存：
+              location /assets/ {
+                  add_header Cache-Control "public, max-age=31536000, immutable";
+              }
+            index.html 则要 no-cache，保证发版即时生效。
+          - 本项目是纯前端应用，无需 Node 运行时，扔到任何静态托管即可。
+          TXT
+
+          # 同时产出两种格式：tar.gz 给 Linux/macOS，zip 给 Windows
+          tar -czf "$RUNNER_TEMP/$NAME.tar.gz" -C "$RUNNER_TEMP" "$NAME"
+          (cd "$RUNNER_TEMP" && zip -qr "$NAME.zip" "$NAME")
+
+          echo "PACKAGE_NAME=$NAME" >> "$GITHUB_ENV"
+          ls -lh "$RUNNER_TEMP/$NAME.tar.gz" "$RUNNER_TEMP/$NAME.zip"
 
       - name: 打 tag 并推送
         if: ${{ inputs.dry_run != true && github.event_name == 'workflow_dispatch' }}
@@ -152,30 +181,47 @@ jobs:
 
             由 GitHub Actions 自动发布。
 
+            ### 下载产物
+
+            | 文件 | 说明 |
+            |---|---|
+            | `json-format-${{ steps.ver.outputs.version }}.tar.gz` | Linux / macOS |
+            | `json-format-${{ steps.ver.outputs.version }}.zip` | Windows |
+
+            解压后把目录内所有文件部署到静态服务器根目录即可，纯前端无需 Node 运行时。
+            部署要点见压缩包内的 `README.txt`。
+
             ### 本次变更
             见下方自动生成的提交列表。
-
-            ### 安装/部署
-            产物为纯静态站点，将 `dist/` 目录部署到任意静态服务器 / CDN 即可。
           files: |
-            dist/assets/*.js
-            dist/assets/*.css
-            dist/index.html
+            ${{ runner.temp }}/${{ env.PACKAGE_NAME }}.tar.gz
+            ${{ runner.temp }}/${{ env.PACKAGE_NAME }}.zip
 
       - name: dry-run 汇总
         if: ${{ inputs.dry_run == true }}
         run: |
+          set -euo pipefail
+          # dry-run 阶段也把包打出来，这样 summary 里能直接看到压缩后体积，
+          # 不用等真发版才发现产物有问题。
+          NAME="json-format-${{ steps.ver.outputs.version }}"
+          PKGDIR="$RUNNER_TEMP/$NAME"
+          mkdir -p "$PKGDIR"
+          cp -r dist/. "$PKGDIR/"
+          tar -czf "$RUNNER_TEMP/$NAME.tar.gz" -C "$RUNNER_TEMP" "$NAME"
+          TGZ=$(du -h "$RUNNER_TEMP/$NAME.tar.gz" | cut -f1)
+
           {
             echo "### dry-run 结束，未做任何变更"
             echo ""
             echo "| 项 | 值 |"
             echo "|---|---|"
             echo "| 目标版本 | ${{ steps.ver.outputs.version }} |"
-            echo "| dry_run | ${{ inputs.dry_run }} |"
+            echo "| dist 原始体积 | $(du -sh dist | cut -f1) |"
+            echo "| 打包后体积 | $TGZ |"
             echo ""
             echo "### 产物清单"
             echo '```'
-            ls -la dist/ dist/assets/ | head -40
+            find dist -type f | sort
             echo '```'
             echo ""
             echo "把 dry_run 改成 false 再跑一次即可真正打 tag 发版。"
