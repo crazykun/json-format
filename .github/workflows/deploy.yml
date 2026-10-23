@@ -1,0 +1,146 @@
+name: Deploy
+
+# release 发布成功后自动部署到宝塔服务器。
+# 也可以手动触发重跑（用于失败重试或回滚）。
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '要部署的版本（留空则部署最新 release）'
+        required: false
+        type: string
+      rollback:
+        description: '是否执行回滚（忽略 version）'
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: 解析目标版本
+        id: ver
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.rollback }}" = "true" ]; then
+            echo "rollback=1" >> "$GITHUB_OUTPUT"
+            echo "::notice::回滚模式"
+            exit 0
+          fi
+
+          if [ -n "${{ inputs.version }}" ]; then
+            V="${{ inputs.version }}"
+          else
+            V="$(gh release view --json tagName -q .tagName)"
+          fi
+
+          # 触发条件可能是 push tag（此时没有 release），回退到 git tag
+          if [ -z "$V" ]; then
+            V="$(git describe --tags --abbrev=0)"
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "::notice::目标版本 $V"
+
+      - name: 配置 SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
+          ssh-host: ${{ secrets.SERVER_HOST }}
+
+      - name: 拉取部署脚本
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/deploy"
+          curl -fsSL --retry 3 \
+            "${{ secrets.SERVER_HOST }}/__raw/main/deploy/deploy.sh" \
+            -o "$HOME/deploy/deploy.sh" 2>/dev/null || \
+          curl -fsSL --retry 3 \
+            "https://raw.githubusercontent.com/${{ github.repository }}/main/deploy/deploy.sh" \
+            -o "$HOME/deploy/deploy.sh"
+          chmod +x "$HOME/deploy/deploy.sh"
+          echo "deploy.sh 就绪: $(wc -l < "$HOME/deploy/deploy.sh") 行"
+
+      - name: 下载 release 产物
+        if: ${{ inputs.rollback != true }}
+        run: |
+          set -euo pipefail
+          V="${{ steps.ver.outputs.version }}"
+          mkdir -p /tmp/pkg
+          gh release download "$V" --pattern "*.tar.gz" --dir /tmp/pkg
+          ls -lh /tmp/pkg/
+          echo "PKG=$(ls /tmp/pkg/*.tar.gz | head -1)" >> "$GITHUB_ENV"
+
+      - name: 上传产物到服务器
+        if: ${{ inputs.rollback != true }}
+        run: |
+          set -euo pipefail
+          V="${{ steps.ver.outputs.version }}"
+          scp -o StrictHostKeyChecking=accept-new \
+            "$PKG" "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/tmp/"
+          echo "已上传 /tmp/$(basename "$PKG")"
+
+      - name: 执行部署
+        if: ${{ inputs.rollback != true }}
+        run: |
+          set -euo pipefail
+          V="${{ steps.ver.outputs.version }}"
+          PKG="/tmp/$(basename "$PKG")"
+          ssh -o StrictHostKeyChecking=accept-new \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" \
+            "DEPLOY_ROOT='${{ secrets.DEPLOY_ROOT }}' \
+             KEEP_RELEASES='${{ secrets.KEEP_RELEASES }}' \
+             bash -s --version '$V' --file '$PKG'" \
+            < "$HOME/deploy/deploy.sh"
+
+      - name: 执行回滚
+        if: ${{ inputs.rollback == true }}
+        run: |
+          ssh -o StrictHostKeyChecking=accept-new \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" \
+            "DEPLOY_ROOT='${{ secrets.DEPLOY_ROOT }}' \
+             bash -s --rollback" \
+            < "$HOME/deploy/deploy.sh"
+
+      - name: 线上冒烟验证
+        if: ${{ inputs.rollback != true }}
+        run: |
+          set -euo pipefail
+          URL="${{ secrets.SMOKE_URL }}"
+          if [ -z "$URL" ]; then
+            echo "::notice::未配置 SMOKE_URL，跳过线上验证"
+            exit 0
+          fi
+          sleep 3
+          CODE=$(curl -fsS -o /dev/null -w '%{http_code}' "$URL" || echo 000)
+          echo "线上 $URL -> HTTP $CODE"
+          if [ "$CODE" != "200" ]; then
+            echo "::error::线上验证失败（HTTP $CODE），请检查服务器"
+            exit 1
+          fi
+
+      - name: 部署结果汇总
+        if: always()
+        run: |
+          {
+            echo "### 部署结果"
+            echo ""
+            echo "| 项 | 值 |"
+            echo "|---|---|"
+            echo "| 触发方式 | ${{ github.event_name }} |"
+            echo "| 版本 | ${{ steps.ver.outputs.version || '回滚' }} |"
+            echo "| 服务器 | ${{ secrets.SERVER_HOST }} |"
+            echo "| 结论 | ${{ job.status }} |"
+            echo ""
+            echo "服务器端可用 \`deploy.sh --list\` 查看历史版本，\`deploy.sh --rollback\` 手动回滚。"
+          } >> "$GITHUB_STEP_SUMMARY"
