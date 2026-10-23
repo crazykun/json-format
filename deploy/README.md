@@ -1,68 +1,50 @@
-# 宝塔面板 + GitHub Actions 自动部署指南
+# 自动部署指南（json-format）
 
-## 整体思路
+两种方案，**推荐方案一**。
 
-服务器上不放「当前版本」这一份文件，而是**每个版本一个目录，外加一个 `current` 软链接**：
+| | 方案一：宝塔 WebHook | 方案二：Actions SSH |
+|---|---|---|
+| 需要 SSH 密钥 | 不需要 | 需要 |
+| 需要配GitHub Secrets | 不需要 | 需要 6 个 |
+| 服务器要装 node | 不需要 | 不需要 |
+| 服务器要git clone | 不需要 | 不需要 |
+| 配置耗时 | 约 5 分钟 | 约 20 分钟 |
+| 部署耗时 | 约 10 秒 | 约 30 秒 |
+| 适用| **宝塔面板用户** | 非宝塔 / 不便开 webhook 入口 |
 
-```
-/www/wwwroot/json-format/
-├── releases/
-│   ├── v2.1.1/← 旧版本（保留 5 个，自动清理更老的）
-│   └── v2.1.2/          ← 当前版本
-├── current -> releases/v2.1.2← nginx root 指向这里
-└── deploy.sh
-```
-
-nginx 配置里root 写`current`：
-
-```nginx
-root /www/wwwroot/json-format/current;
-```
-
-这样部署时**不需要动正在服务的文件**：
-- 新版本解压到一个全新目录，物理上与旧版本并存
-- 起临时端口验证新版本真的能跑
-- 验证通过才改软链接 → `ln -sfn` + `mv -T` 是原子操作，瞬间生效
-- 用户请求全程不受影响（没有"删掉旧文件时正好被访问"的窗口）
-- 出问题就把软链接指回去，线上立刻恢复
+两者共用同一份 `deploy/deploy.sh`，按需二选一即可。
 
 ---
 
-## 一、服务器端准备
+## 共同前提：目录结构与 nginx 配置
 
-### 1. 目录与部署用户
+不管用哪个方案，都要先做这一步。
 
-```bash
-mkdir -p /www/wwwroot/json-format/releases
-chown -R www:www /www/wwwroot/json-format
+### 目录结构
+
+```
+/www/wwwroot/json-format/
+├── deploy.sh              ← deploy/deploy.sh 上传到这里
+├── releases/              ← 各版本目录，自动管理
+│   ├── v2.1.1/            ← 旧版本（保留 5 个）
+│   └── v2.1.2/            ← 当前版本
+└── current -> releases/v2.1.2   ← nginx root 指向这里
 ```
 
-### 2. 传脚本
+### nginx root 改成current（关键）
 
-从本地推上去（推荐，之后跟着仓库更新）：
-
-```bash
-# 在仓库目录执行
-scp deploy/deploy.sh root@你的服务器:/www/wwwroot/json-format/deploy.sh
-ssh root@你的服务器 'chmod +x /www/wwwroot/json-format/deploy.sh'
-```
-
-或直接在服务器上手动创建：`deploy/deploy.sh` 的内容复制过去即可。
-
-### 3. 改 nginx root（关键一步）
-
-宝塔面板 → 网站 → `json.okkkr.com` → 设置 → 配置文件，把 `root` 改成：
+宝塔面板 → 网站 → `json.okkkr.com` → **设置 → 配置文件**，把 `root` 改成：
 
 ```nginx
 root /www/wwwroot/json-format/current;
 ```
 
-⚠️ 改完点「保存」，宝塔会自己重载 nginx。
+⚠️ **这一步不做，部署了也不会生效** —— nginx 还在读旧路径。改完点「保存」，宝塔会自己重载。
 
-**同时把缓存配置加上**（在同一个配置文件里，`server {}` 内）：
+顺带把缓存配置加上（同一个配置文件，`server {}` 内）：
 
 ```nginx
-# 带 hash 的构建产物，内容永不改变
+# 带 hash 的构建产物，内容永不改变，可永久缓存
 location /assets/ {
     add_header Cache-Control "public, max-age=31536000, immutable";
     access_log off;
@@ -74,148 +56,235 @@ location = /index.html {
 }
 ```
 
-### 4. 首次手动部署（建议先验证一次）
+### 上传 deploy.sh
 
 ```bash
-# 在本地打包
-cd 仓库目录
-npm run build
-cd dist && tar -czf ../json-format-v2.1.2.tar.gz --transform 's|^|json-format-v2.1.2/|' *
-```
-
-更省事：直接从 GitHub Release 下载已打好的包。
-
-```bash
-# 服务器上
-cd /tmp
-wget https://github.com/crazykun/json-format/releases/download/v2.1.2/json-format-v2.1.2.tar.gz
-/www/wwwroot/json-format/deploy.sh --version v2.1.2 --file /tmp/json-format-v2.1.2.tar.gz
-```
-
-看到 `OK 部署完成，当前版本 v2.1.2` 就成了。浏览器打开域名确认能正常用，再配自动部署。
-
-### 5. 检查权限
-
-```bash
-# 当前部署身份是谁
-id
-# 测试能否重载 nginx（宝塔 nginx 需要 root 或www 用户权限）
-sudo nginx -t && sudo nginx -s reload
-```
-
-如果部署脚本不是 root 跑，`nginx -s reload` 可能失败。脚本会打印警告并提示你去面板点重载 —— **不影响文件切换**，只是 nginx 可能还在用旧配置。生产环境建议给部署用户加 sudo 权限：
-
-```bash
-# /etc/sudoers.d/deploy
-www ALL=(ALL) NOPASSWD: /www/server/nginx/sbin/nginx -s reload
+# 本地仓库目录执行
+ssh root@你的服务器 'mkdir -p /www/wwwroot/json-format/releases'
+scp deploy/deploy.sh root@你的服务器:/www/wwwroot/json-format/deploy.sh
+ssh root@你的服务器 'chmod +x /www/wwwroot/json-format/deploy.sh'
 ```
 
 ---
 
-## 二、GitHub端配置
+## 方案一：宝塔 WebHook（推荐）
 
-仓库 → Settings → **Secrets and variables** → Actions → New repository secret：
+### 原理
 
-| Secret 名 | 值 | 说明 |
-|---|---|---|
-| `SERVER_HOST` | `1.2.3.4` 或 `服务器域名` | 不带协议不带端口 |
-| `SERVER_USER` | `root` 或 `www` | 部署身份 |
-| `SERVER_SSH_KEY` | SSH 私钥全文 | 见下方生成方法 |
-| `DEPLOY_ROOT` | `/www/wwwroot/json-format` | 部署根目录 |
-| `KEEP_RELEASES` | `5` | 保留几个历史版本 |
-| `SMOKE_URL` | `https://json.okkkr.com/` | 部署后冒烟验证，可留空 |
+```
+git push tag → GitHub 生成 Release → GitHub 主动 POST 到你的面板 URL
+→ 宝塔执行 webhook.sh → 下载 release 包 → deploy.sh 原子切换
+```
 
-### 生成 SSH 密钥对
+**不需要 SSH 密钥，不需要 Secrets，不需要服务器装 node。** 整套就是「下载 + 解压 + 切软链接」。
 
-在**本地**执行（不要在服务器上生成）：
+### 步骤 1：安装 WebHook 插件
+
+宝塔面板 → 软件商店 → 搜索「Webhook」→ 安装。
+（如果你是用「Git 创建」方式建站的，这插件会自动装好。）
+
+### 步骤 2：添加 Hook，粘贴脚本
+
+面板左侧 → **WebHook** → 添加 Hook：
+
+- **Hook 名称**：`json-format-deploy`
+- **执行脚本**：粘贴 `deploy/webhook.sh` 的全部内容
+
+脚本开头有一大段注释，粘贴时可以保留（方便日后对照）。
+
+### 步骤 3：复制 Webhook URL
+
+添加完会生成一个类似这样的地址：
+
+```
+http://你的服务器IP:8888/hook?access_key=xxxxxxxx
+```
+
+⚠️ **这个 URL 等同于密码**，不要提交到公开仓库、别发到群里。谁拿到谁就能触发部署（虽然只能部署官方 release，风险有限，但会浪费流量）。
+
+### 步骤 4：GitHub 仓库添加 Webhook
+
+仓库 → **Settings → Webhooks → Add webhook**：
+
+| 字段 | 值 |
+|---|---|
+| Payload URL | 粘贴上面复制的宝塔 URL |
+| Content type | `application/json` |
+| SSL verification | 面板有 SSL 就选 Enable，否则 Disable |
+
+**Payload URL 填好后会默认勾选 Push 事件，把 Push 取消掉**，改为只勾：
+
+> ☑ **Release: published**
+
+这样只有发版才触发，普通提交不会碰服务器。
+
+（想改成tag 推送就触发，也可以勾 `Push`，但注意 tag push 时 Release 还没生成完，可能拉到旧包。推荐 Release。）
+
+### 步骤 5：测试
+
+在仓库 → Actions 手动跑一次 `Release`（`dry_run=false`），发个新 tag。等release 生成后：
+
+- 宝塔面板 → WebHook → 点你的 Hook 看**执行日志**
+- GitHub 仓库 → Settings → Webhooks → **Recent Deliveries** 看是否 200
+
+### 步骤 6：确认部署身份
+
+宝塔的 webhook 进程可能以 `www` 或 `root` 身份执行。检查：
+
+```bash
+# 触发一次部署后，看日志里有没有 nginx reload 失败
+```
+
+如果看到：
+
+```
+WARN nginx reload 未成功，请在宝塔面板点「重载配置」
+```
+
+说明文件已切换成功，只是 nginx 还没重载。两个办法：
+
+1. **简单**：以后每次部署完在面板点一下「Nginx → 重载配置」（不优雅但够用）
+2. **彻底**：给部署用户加sudo 权限
+   ```bash
+   # /etc/sudoers.d/jsonfmt
+   www ALL=(ALL) NOPASSWD: /www/server/nginx/sbin/nginx -s reload
+   ```
+
+> 注意：`deploy.sh` 里 nginx 重载失败**不会导致部署失败**，也不会触发回滚——
+> 因为文件本身已经原子切换好了，只是 nginx 还没重新加载配置。这是有意设计的，
+> 避免把「权限问题」误判成「部署失败」。
+
+---
+
+## 方案二：GitHub Actions SSH 直连
+
+适合不用宝塔，或不方便开放 webhook 入口的情况。
+
+### 1. 生成 SSH 密钥对
+
+在**本地**执行：
 
 ```bash
 ssh-keygen -t ed25519 -C "github-actions-deploy" -f ~/.ssh/json_format_deploy -N ""
-cat ~/.ssh/json_format_deploy          # 整个私钥 →填入 SERVER_SSH_KEY
+cat ~/.ssh/json_format_deploy          # 整个私钥 → 填入 SERVER_SSH_KEY
 cat ~/.ssh/json_format_deploy.pub      # 公钥 → 下一步用
 ```
 
-把公钥传到服务器的 `authorized_keys`：
+公钥传到服务器：
 
 ```bash
 ssh root@服务器 'mkdir -p ~/.ssh && chmod 700 ~/.ssh'
 ssh root@服务器 'cat >> ~/.ssh/authorized_keys' < ~/.ssh/json_format_deploy.pub
 ssh root@服务器 'chmod 600 ~/.ssh/authorized_keys'
+ssh -i ~/.ssh/json_format_deploy root@服务器 'echo 连通 OK'   # 验证
 ```
 
-验证：
+### 2. 配置 Secrets
 
-```bash
-ssh -i ~/.ssh/json_format_deploy root@服务器 'echo 连通 OK'
-```
+仓库 → Settings → **Secrets and variables** → Actions → New repository secret：
 
-### 关于 environment: production
+| Secret 名 | 值 |
+|---|---|
+| `SERVER_HOST` | `1.2.3.4` 或服务器域名（不带协议） |
+| `SERVER_USER` | `root` 或 `www` |
+| `SERVER_SSH_KEY` | 上一步的私钥全文 |
+| `DEPLOY_ROOT` | `/www/wwwroot/json-format` |
+| `KEEP_RELEASES` | `5` |
+| `SMOKE_URL` | `https://json.okkkr.com/`（可留空） |
 
-`deploy.yml` 里用了 `environment: production`，首次运行时会要求在仓库里创建这个 environment（Settings → Environments → New environment）。
+### 3. 启用 workflow
 
-好处是可以给它挂审批规则，比如设成「必须手动批准才部署」。不发版就完全不影响 CI。
+`.github/workflows/deploy.yml` 里的 `if: false` 改成 `if: true`，或直接删掉那一行。
+
+### 4.关于 environment
+
+用了 `environment: production`，首次运行会要求在Settings → Environments 创建它。
+建议挂个「手动批准」规则，发版和上线分开控制。
 
 ---
 
-## 三、日常发版流程
+## 日常发版
 
 ```bash
-# 本地
 git tag v2.1.3 && git push origin v2.1.3
 ```
 
-或者在 Actions 页面跑 `Release` workflow（`dry_run=false`）。
+或者 Actions 页面跑 `Release` workflow（`dry_run=false`）。
 
-Release 发布成功后，`Deploy` workflow 会自动触发：
+之后全自动：Release 生成 → webhook 触发 → 下载 → 健康检查 → 原子切换 → reload。
 
-1. 下载 tar.gz
-2. SCP 到服务器
-3. 服务器解压到 `releases/v2.1.3/`
-4. 起临时端口验证首页 + 全部主资源都返回 200
-5. 通过 → 原子切换 `current` → 重载 nginx
-6. 失败 → 删除新目录，线上仍跑旧版本，workflow 标红
-7. GitHub 侧再 curl 一次真实域名做冒烟验证
+**部署失败时线上不受影响**，仍是旧版本，GitHub 会看到部署失败。
 
 ---
 
-## 四、日常运维命令
+## 日常运维
 
 ```bash
 cd /www/wwwroot/json-format
 
 ./deploy.sh --list              # 看所有版本，标出当前生效的
-./deploy.sh --rollback          # 回滚到上一个版本
-./deploy.sh --version v2.1.2 --file /tmp/json-format-v2.1.2.tar.gz   # 手动部署指定版本
+./deploy.sh --rollback# 回滚到上一个版本
 ```
 
-紧急回滚也可以直接从GitHub Actions 触发（workflow_dispatch → `rollback` 勾 true）。
+紧急回滚也可以直接重新触发 webhook —— 但注意脚本是「追最新版」的，
+要回滚得手动跑上面那条 `--rollback`。
 
 ---
 
-## 五、常见问题
+## deploy.sh 做了什么
+
+| 能力 | 说明 |
+|---|---|
+| 健康检查才切换 | 解压到全新目录，起临时端口实测首页+ 全部主资源 HTTP 200，任一 404 即判定坏版本 |
+| 原子切换 | `ln -sfn` + `mv -T`，瞬时完成，不存在「删旧文件时正好被访问」的窗口 |
+| 自动回滚 | nginx 重载失败时软链接指回旧版本 |
+| 版本号校验 | 白名单匹配，挡住 `../../etc` 这类路径穿越 |
+| 自动清理 | 按 mtime 保留最近 N 个（不是按目录名，`v2.1.10` vs `v2.1.9` 会排错） |
+| 幂等 | 同一版本重复部署会先清干净旧目录再解 |
+
+webhook.sh 额外做了：
+
+| 能力 | 说明 |
+|---|---|
+| 幂等跳过 | 当前已是最新版本直接退出，不重复部署 |
+| 并发锁 | `flock` 防GitHub 超时重试导致并发部署 |
+| 下载重试 | 失败重试 3 次，且校验是不是有效 tar.gz（防把错误页当产物） |
+| 产物校验 | `tar -tzf` 验证，否则重试 |
+
+---
+
+## 常见问题
 
 **Q: 部署成功了但线上还是旧页面？**
-A: nginx 没重载。宝塔面板 → 软件商店 → Nginx → 「重载配置」。或检查 `current` 软链接是否真的指向新版本。
+A: nginx 没重载。宝塔 → 软件商店 → Nginx → 「重载配置」。日志里有 `WARN nginx reload 未成功` 就是这个情况。
 
-**Q: 打开页面是 404？**
-A: 多半是 nginx `root` 没改成 `current`，或者改完没重载。`curl -I https://你的域名/` 看返回。
+**Q: 打开页面 404？**
+A: nginx `root` 没改成 `current`，或改完没重载。`curl -I https://你的域名/` 看返回。
 
 **Q: 静态资源 404？**
-A: 检查 `releases/v2.1.x/index.html` 和 `assets/` 是否同级目录。压缩包结构必须是：
+A: 检查目录层级对不对。正确结构是：
 ```
-json-format-v2.1.2/index.html
-json-format-v2.1.2/assets/*.js
+releases/v2.1.2/index.html
+releases/v2.1.2/assets/*.js
 ```
+`index.html` 和 `assets/` 必须是同级。
+
+**Q: webhook 一直不触发？**
+A: 查 GitHub Settings → Webhooks → Recent Deliveries，红色说明请求失败。
+若是 404/403，多半是 URL 错了或 access_key 不匹配。
+
+**Q: webhook 触发了但日志报 GitHub API 失败？**
+A: 服务器出网问题，或 API 限额耗尽。检查 `curl -I https://api.github.com` 通不通。
+私有仓库需在脚本里设 `GITHUB_TOKEN`。
 
 **Q: 健康检查一直失败？**
-A: 脚本需要 `node` 命令（用来起临时静态服务器）。宝塔环境一般有，若没有：
-```bash
-ln -s /www/server/nodejs/vXX/bin/node /usr/local/bin/node
-```
-或设置 `NODE_BIN` 指向实际路径。
+A: `deploy.sh` 需要 `node` 命令（起临时静态服务器用）。宝塔一般有，
+若没有：`ln -s /www/server/nodejs/vXX/bin/node /usr/local/bin/node`，
+或在脚本里设 `NODE_BIN` 指向实际路径。
 
 **Q: 磁盘满了？**
-A: `releases/` 会累积历史版本。`KEEP_RELEASES` 控制保留数量，默认 5。也别忘了 `/tmp` 下传的包可以定期清。
+A: `releases/` 会累积历史版本，`KEEP_RELEASES` 控制保留数量（默认 5）。
+`/tmp` 下临时包已自动清理。
 
 **Q: 能改成 rsync 增量吗？**
-A: 静态站点体积小（压缩后1.3MB），全量传更快也更简单可靠，不建议改增量。
+A: 不建议。静态站点压缩后只有 1.3MB，全量传更快也更简单可靠。

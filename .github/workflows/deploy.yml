@@ -1,6 +1,20 @@
 name: Deploy
 
-# release 发布成功后自动部署到宝塔服务器。
+# ============================================================================
+# 方案二：GitHub Actions 直连服务器（SSH）。
+#
+#   方案一（推荐，宝塔用户）：用 deploy/webhook.sh + 宝塔 WebHook 插件，
+#     不需要 SSH 密钥、不需要配 Secrets，本 workflow 保持关闭即可。
+#     见 deploy/README.md 的「方案一」章节。
+#
+#   方案二（本workflow）：Actions 通过 SSH 直接推服务器。适合不用宝塔，
+#     或不方便开放 webhook 入口的场景。
+#
+#   两种方案共用同一份 deploy/deploy.sh，互不冲突，按需二选一。
+#   同时启用也不会坏事—— deploy.sh 有幂等锁与版本检查，重复调用会跳过。
+# ============================================================================
+
+# release 发布成功后自动部署。
 # 也可以手动触发重跑（用于失败重试或回滚）。
 on:
   release:
@@ -28,6 +42,10 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: production
+    #默认关闭：宝塔用户走方案一（webhook.sh），不需要这个 job。
+    # 启用方式：把下面 if 改成 true，或删掉整行。
+    # 两种方案同时启用不会坏事，deploy.sh 幂等会跳过重复部署。
+    if: false
     steps:
       - name: 解析目标版本
         id: ver
