@@ -23,9 +23,12 @@ on:
     tags:
       - 'v*'
 
-# 同一分支串行，避免并发发版打架
+# 同一目标版本串行，避免并发发版打架。
+# 注意：workflow_dispatch 下 github.ref 恒为 refs/heads/main，
+# 用它做 key 会让「同步版本号的 push 提交」触发的新一轮 workflow
+# 与本轮互相阻塞，因此按输入版本号 + 事件名隔离。
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.event_name }}-${{ inputs.version || github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -115,6 +118,8 @@ jobs:
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add package.json package-lock.json
             git commit -m "chore(release): bump version to $PKG_VERSION"
+            # 必须推回远端，否则这个提交只留在 runner 上，发完就丢
+            git push origin HEAD:main
           else
             echo "::notice::package.json 版本已是 $PKG_VERSION，跳过"
           fi
