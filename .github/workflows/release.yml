@@ -1,0 +1,177 @@
+name: Release
+
+# 手动触发打 tag + release；push tag 时只校验已存在的 release，不重复创建。
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号，如 v2.1.0（留空则自动取 package.json 的 version）'
+        required: false
+        type: string
+      bump:
+        description: '自动递增方式（version 留空时生效）'
+        required: false
+        default: 'patch'
+        type: choice
+        options: [patch, minor, major]
+      dry_run:
+        description: '只跑构建并校验，不打 tag、不发 release'
+        required: false
+        default: 'true'
+        type: boolean
+  push:
+    tags:
+      - 'v*'
+
+# 同一分支串行，避免并发发版打架
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 类型检查与构建
+        run: npm run build
+
+      - name: 解析版本号
+        id: ver
+        run: |
+          set -euo pipefail
+          INPUT="${{ inputs.version }}"
+          BUMP="${{ inputs.bump || 'patch' }}"
+          PKG=$(node -p "require('./package.json').version")
+
+          if [ -n "$INPUT" ]; then
+            VERSION="$INPUT"
+          else
+            # npm version 会自动改package.json + 创建 tag，这里只借它算版本号
+            VERSION=$(node -e "
+              const [maj,min,pat]=process.argv[1].split('.').map(Number);
+              const b=process.argv[2];
+              if(b==='major') process.stdout.write((maj+1)+'.0.0');
+              else if(b==='minor') process.stdout.write(maj+'.'+(min+1)+'.0');
+              else process.stdout.write(maj+'.'+min+'.'+(pat+1));
+            " "$PKG" "$BUMP")
+          fi
+
+          # 统一补 v 前缀
+          case "$VERSION" in
+            v*) ;;
+            *) VERSION="v$VERSION" ;;
+          esac
+
+          # 语义化校验
+          if ! echo "$VERSION" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "::error::版本号格式非法: $VERSION（期望 vX.Y.Z）"
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "::notice::本次发布版本 $VERSION（package.json 当前 $PKG）"
+
+      - name: 校验 tag 冲突与工作区干净
+        if: ${{ inputs.version != '' || github.event_name == 'workflow_dispatch' }}
+        run: |
+          set -euo pipefail
+          V="${{ steps.ver.outputs.version }}"
+          if git ls-remote --exit-code --tags origin "refs/tags/$V" >/dev/null 2>&1; then
+            echo "::error::tag $V 已存在，换个版本号或先删除远端 tag"
+            exit 1
+          fi
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::工作区不干净，先提交或 stash"
+            git status --short
+            exit 1
+          fi
+
+      - name: 同步 package.json 版本号
+        if: ${{ inputs.dry_run != true && github.event_name == 'workflow_dispatch' }}
+        run: |
+          set -euo pipefail
+          V="${{ steps.ver.outputs.version }}"
+          PKG_VERSION="${V#v}"
+          # 只有当package.json 版本与目标不一致时才改并提交
+          CURRENT=$(node -p "require('./package.json').version")
+          if [ "$CURRENT" != "$PKG_VERSION" ]; then
+            npm version "$PKG_VERSION" --no-git-tag-version --allow-same-version
+            git config user.name  "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package.json package-lock.json
+            git commit -m "chore(release): bump version to $PKG_VERSION"
+          else
+            echo "::notice::package.json 版本已是 $PKG_VERSION，跳过"
+          fi
+
+      - name: 打包产物并上传
+        if: ${{ inputs.dry_run != true && github.event_name == 'workflow_dispatch' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: json-format-${{ steps.ver.outputs.version }}
+          path: dist/
+          retention-days: 30
+
+      - name: 打 tag 并推送
+        if: ${{ inputs.dry_run != true && github.event_name == 'workflow_dispatch' }}
+        run: |
+          set -euo pipefail
+          V="${{ steps.ver.outputs.version }}"
+          git tag -a "$V" -m "release $V"
+          git push origin "refs/tags/$V"
+
+      - name: 创建 Release
+        if: ${{ inputs.dry_run != true && github.event_name == 'workflow_dispatch' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.version }}
+          name: ${{ steps.ver.outputs.version }}
+          generate_release_notes: true
+          body: |
+            ## ${{ steps.ver.outputs.version }}
+
+            由 GitHub Actions 自动发布。
+
+            ### 本次变更
+            见下方自动生成的提交列表。
+
+            ### 安装/部署
+            产物为纯静态站点，将 `dist/` 目录部署到任意静态服务器 / CDN 即可。
+          files: |
+            dist/assets/*.js
+            dist/assets/*.css
+            dist/index.html
+
+      - name: dry-run 汇总
+        if: ${{ inputs.dry_run == true }}
+        run: |
+          {
+            echo "### dry-run 结束，未做任何变更"
+            echo ""
+            echo "| 项 | 值 |"
+            echo "|---|---|"
+            echo "| 目标版本 | ${{ steps.ver.outputs.version }} |"
+            echo "| dry_run | ${{ inputs.dry_run }} |"
+            echo ""
+            echo "### 产物清单"
+            echo '```'
+            ls -la dist/ dist/assets/ | head -40
+            echo '```'
+            echo ""
+            echo "把 dry_run 改成 false 再跑一次即可真正打 tag 发版。"
+          } >> "$GITHUB_STEP_SUMMARY"
